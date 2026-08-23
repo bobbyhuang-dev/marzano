@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Node 24 LTS (pinned in `.nvmrc`; `engines` allows 20.19+/22.13+/24+). The installed `node_modules` was built by pnpm (`pnpm@11`), though a stale `package-lock.json` is also present — prefer pnpm.
+Node 24 LTS (pinned in `.nvmrc`; `engines` allows 20.19+/22.13+/24+) and pnpm (pinned via `packageManager`). Use pnpm — npm/yarn will produce a lockfile the project does not track.
 
 ```bash
 pnpm dev       # Vite dev server

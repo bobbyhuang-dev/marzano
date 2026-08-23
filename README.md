@@ -62,4 +62,4 @@ src/
 
 ## License
 
-[MIT](LICENSE) © 2026 Bobby
+[MIT](LICENSE) © 2026 Bobby Huang
