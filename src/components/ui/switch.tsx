@@ -1,0 +1,46 @@
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+export interface SwitchProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange" | "type"> {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}
+
+/** A compact settings switch with a full-size touch target. */
+const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
+  ({ className, checked, onCheckedChange, ...props }, ref) => (
+    <button
+      ref={ref}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      data-state={checked ? "checked" : "unchecked"}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "flex h-6 w-11 items-center rounded-full p-0.5 transition-colors duration-200 ease-out",
+          checked ? "bg-primary" : "bg-input",
+        )}
+      >
+        <span
+          className={cn(
+            "block size-5 rounded-full bg-background shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-transform duration-200 ease-out",
+            checked ? "translate-x-5" : "translate-x-0",
+          )}
+        />
+      </span>
+    </button>
+  ),
+);
+Switch.displayName = "Switch";
+
+export { Switch };
