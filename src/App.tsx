@@ -26,7 +26,10 @@ import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
 import { type TaskChanges } from "@/components/edit-task-dialog";
-import { PomodoroPage } from "@/components/pomodoro-page";
+import {
+  PomodoroPage,
+  PomodoroSettingsDialog,
+} from "@/components/pomodoro-page";
 import { TagFilterMenu } from "@/components/tag-filter-menu";
 import { type TagValues } from "@/components/tag-form-dialog";
 import {
@@ -329,12 +332,7 @@ function App() {
       />
 
       <main className="min-w-0 flex-1 overflow-x-hidden">
-        <div
-          className={cn(
-            "mx-auto w-full px-4 py-8 sm:px-6 sm:py-12",
-            view === "pomodoro" ? "max-w-5xl" : "max-w-3xl",
-          )}
-        >
+        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
           <div className="mb-8 sm:mb-10">
             {openTag ? (
               <Button
@@ -358,9 +356,14 @@ function App() {
               >
                 <PanelLeft aria-hidden="true" />
               </Button>
-              <h1 className="min-w-0 truncate text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+              <h1 className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
                 {pageTitle}
               </h1>
+              {/* The only page with a setting of its own keeps it on the title
+                  row, rather than floating a control above the page. */}
+              {view === "pomodoro" ? (
+                <PomodoroSettingsDialog controller={pomodoro} />
+              ) : null}
             </header>
           </div>
 

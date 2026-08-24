@@ -1,27 +1,21 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import { format, isSameDay, startOfDay, subDays } from "date-fns";
 import {
-  BarChart3,
-  Bell,
+  CalendarClock,
+  CalendarOff,
   Check,
-  CheckCircle2,
-  Clock3,
-  Coffee,
   ListTodo,
   Pause,
   Play,
   RotateCcw,
   Settings2,
   SkipForward,
-  Target,
-  Timer,
   Trash2,
 } from "lucide-react";
 
 import { EmptyPanel } from "@/components/empty-panel";
 import { TagChip, TagChipList } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -70,13 +65,25 @@ const PHASE_LABELS: Record<PomodoroPhase, string> = {
   longBreak: "Long break",
 };
 
+const STATUS_LABELS: Record<PomodoroStatus, string> = {
+  idle: "not started",
+  running: "running",
+  paused: "paused",
+};
+
 const FOCUS_OPTIONS = [15, 20, 25, 30, 40, 45, 50, 60, 90];
 const SHORT_BREAK_OPTIONS = [3, 5, 10, 15, 20];
 const LONG_BREAK_OPTIONS = [10, 15, 20, 25, 30, 45];
 const INTERVAL_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
-function formatCountdown(durationMs: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(durationMs / 1000));
+/** How many finished sessions the activity list shows before it stops. */
+const RECENT_SESSION_COUNT = 5;
+
+const DIAL_RADIUS = 54;
+const DIAL_CIRCUMFERENCE = 2 * Math.PI * DIAL_RADIUS;
+
+function formatCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const seconds = totalSeconds % 60;
   const totalMinutes = Math.floor(totalSeconds / 60);
   const minutes = totalMinutes % 60;
@@ -88,22 +95,51 @@ function formatCountdown(durationMs: number): string {
     : `${pad(totalMinutes)}:${pad(seconds)}`;
 }
 
-function TimerProgress({
+/** The page's one heading shape: a title, and at most one action beside it. */
+function SectionHeading({
+  id,
+  title,
+  action,
+}: {
+  id?: string;
+  title: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+      <h2
+        id={id}
+        className="text-sm font-semibold tracking-[-0.01em] text-foreground"
+      >
+        {title}
+      </h2>
+      {action}
+    </div>
+  );
+}
+
+/**
+ * The countdown, drawn as a ring that fills as the round runs. The arc is the
+ * only thing on the page that carries colour weight, so the time inside it can
+ * stay plain text on the page background.
+ */
+function TimerDial({
   remainingMs,
   plannedDurationMs,
   phase,
   status,
+  hint,
 }: {
   remainingMs: number;
   plannedDurationMs: number;
   phase: PomodoroPhase;
   status: PomodoroStatus;
+  hint: string;
 }) {
   const progress =
     plannedDurationMs > 0
       ? Math.min(1, Math.max(0, 1 - remainingMs / plannedDurationMs))
       : 0;
-  const degrees = Math.round(progress * 360);
   const time = formatCountdown(remainingMs);
 
   return (
@@ -111,16 +147,52 @@ function TimerProgress({
       role="timer"
       aria-live="off"
       aria-atomic="true"
-      aria-label={`${PHASE_LABELS[phase]}, ${status}, ${time} remaining`}
-      className="relative flex size-60 shrink-0 items-center justify-center rounded-full p-2 sm:size-72 sm:p-2.5"
-      style={{
-        background: `conic-gradient(hsl(var(--primary)) ${degrees}deg, hsl(var(--muted)) ${degrees}deg)`,
-      }}
+      aria-label={`${PHASE_LABELS[phase]}, ${STATUS_LABELS[status]}, ${time} remaining`}
+      className="relative flex size-56 shrink-0 items-center justify-center sm:size-64"
     >
-      <div className="flex size-full flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_0_1px_hsl(var(--border))]">
-        <span className="text-5xl font-semibold tracking-[-0.065em] tabular-nums text-foreground sm:text-6xl">
+      <svg viewBox="0 0 120 120" aria-hidden="true" className="size-full -rotate-90">
+        <circle
+          cx="60"
+          cy="60"
+          r={DIAL_RADIUS}
+          fill="none"
+          strokeWidth="5"
+          className="stroke-border"
+        />
+        {/* A zero-length dash with a round cap still paints a dot, so the arc
+            only exists once the round has actually moved. */}
+        {progress > 0 ? (
+          <circle
+            cx="60"
+            cy="60"
+            r={DIAL_RADIUS}
+            fill="none"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray={DIAL_CIRCUMFERENCE}
+            strokeDashoffset={DIAL_CIRCUMFERENCE * (1 - progress)}
+            className={cn(
+              "transition-[stroke-dashoffset] duration-700 ease-linear",
+              phase === "focus" ? "stroke-primary" : "stroke-muted-foreground",
+              status === "paused" && "opacity-45",
+            )}
+          />
+        ) : null}
+      </svg>
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+        <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {PHASE_LABELS[phase]}
+        </span>
+        <span
+          className={cn(
+            "font-semibold leading-none tracking-[-0.055em] tabular-nums text-foreground",
+            time.length > 5 ? "text-4xl sm:text-5xl" : "text-5xl sm:text-6xl",
+          )}
+        >
           {time}
         </span>
+        <span className="text-xs text-muted-foreground">{hint}</span>
       </div>
     </div>
   );
@@ -134,7 +206,6 @@ function TaskPickerDialog({
   tagsById,
   onSelect,
   running,
-  trigger,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -143,28 +214,28 @@ function TaskPickerDialog({
   tagsById: Map<string, Tag>;
   onSelect: (taskId: string) => void;
   running: boolean;
-  trigger?: ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] max-w-lg grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
-        <DialogHeader className="px-6 pt-6">
+      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] max-w-lg grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+        <DialogHeader className="px-6 pb-4 pr-14 pt-6">
           <DialogTitle>Choose a focus task</DialogTitle>
           <DialogDescription>
-            {running ? "The timer keeps running." : "Select one for this round."}
+            {running ? "The timer keeps running." : "Pick one for this round."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 overflow-y-auto px-3 pb-3">
           {tasks.length === 0 ? (
-            <EmptyPanel
-              icon={ListTodo}
-              title="No open tasks"
-              description="Add a task on the Tasks page, then come back to focus."
-            />
+            <div className="px-3 pb-3">
+              <EmptyPanel
+                icon={ListTodo}
+                title="No open tasks"
+                description="Add a task on the Tasks page, then come back to focus."
+              />
+            </div>
           ) : (
-            <div role="group" aria-label="Open tasks" className="grid gap-1">
+            <div role="group" aria-label="Open tasks" className="grid gap-0.5">
               {tasks.map((task) => {
                 const selected = task.id === selectedTaskId;
 
@@ -179,7 +250,7 @@ function TaskPickerDialog({
                     }}
                     className={cn(
                       "flex min-h-16 w-full items-start gap-3 rounded-md px-3 py-3 text-left ring-offset-background transition-colors duration-150 ease-out hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                      selected && "bg-secondary",
+                      selected && "bg-secondary hover:bg-secondary",
                     )}
                   >
                     <span
@@ -194,12 +265,11 @@ function TaskPickerDialog({
                       {selected ? <Check strokeWidth={3} className="size-3.5" /> : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words text-sm font-medium leading-5 text-foreground">
+                      <span className="block break-words text-sm font-medium leading-6 text-foreground">
                         {task.title}
                       </span>
-                      <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5 tabular-nums">
-                          <Clock3 className="size-3.5" aria-hidden="true" />
+                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                        <span className="tabular-nums">
                           {task.dueAt ? formatDueDate(task.dueAt) : "No due date"}
                         </span>
                         <span className="flex flex-wrap items-center gap-1.5">
@@ -238,7 +308,7 @@ function SettingToggle({
   return (
     <div
       className={cn(
-        "flex min-h-[4.75rem] items-center gap-4 px-4 py-3.5",
+        "flex items-center gap-4 py-3.5",
         disabled && "opacity-60",
       )}
     >
@@ -262,31 +332,25 @@ function SettingToggle({
   );
 }
 
-function SettingsSectionHeading({
-  id,
+function SettingsSection({
   title,
-  description,
-  icon,
+  children,
 }: {
-  id: string;
   title: string;
-  description: string;
-  icon: ReactNode;
+  children: ReactNode;
 }) {
+  const headingId = useId();
+
   return (
-    <div className="flex items-start gap-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <h3 id={id} className="text-sm font-semibold text-foreground">
-          {title}
-        </h3>
-        <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
-          {description}
-        </p>
-      </div>
-    </div>
+    <section aria-labelledby={headingId}>
+      <h3
+        id={headingId}
+        className="text-sm font-semibold tracking-[-0.01em] text-foreground"
+      >
+        {title}
+      </h3>
+      {children}
+    </section>
   );
 }
 
@@ -322,7 +386,12 @@ function DurationField({
   );
 }
 
-function SettingsDialog({ controller }: { controller: PomodoroController }) {
+/** Lives beside the page title, the way the sidebar's own controls do. */
+function PomodoroSettingsDialog({
+  controller,
+}: {
+  controller: PomodoroController;
+}) {
   const { settings, updateSettings, requestNotificationPermission } = controller;
   const focusId = useId();
   const shortBreakId = useId();
@@ -358,8 +427,9 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
+          className="shrink-0 text-muted-foreground"
           aria-label="Pomodoro settings"
           title="Settings"
         >
@@ -367,12 +437,12 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0"
+        className="flex max-h-[calc(100dvh-2rem)] max-w-lg flex-col gap-0 overflow-hidden p-0"
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, titleRef.current)
         }
       >
-        <DialogHeader className="shrink-0 border-b border-border/70 px-6 py-5">
+        <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pr-14 pt-6">
           <DialogTitle
             ref={titleRef}
             tabIndex={-1}
@@ -381,22 +451,13 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
             Pomodoro settings
           </DialogTitle>
           <DialogDescription>
-            Changes apply next round and save automatically.
+            Changes apply from the next round and save as you make them.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-muted/30 p-4 sm:p-6">
-          <section
-            className="rounded-xl border border-border/80 bg-card p-4 shadow-sm"
-            aria-labelledby="durations-heading"
-          >
-            <SettingsSectionHeading
-              id="durations-heading"
-              title="Durations"
-              description="Focus and break lengths."
-              icon={<Timer className="size-4" aria-hidden="true" />}
-            />
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
+          <SettingsSection title="Durations">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <DurationField
                 id={focusId}
                 label="Focus"
@@ -441,22 +502,13 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
                 />
               </div>
             </div>
-          </section>
+          </SettingsSection>
 
-          <section
-            className="rounded-xl border border-border/80 bg-card p-4 shadow-sm"
-            aria-labelledby="flow-heading"
-          >
-            <SettingsSectionHeading
-              id="flow-heading"
-              title="Session flow"
-              description="Automatic starts."
-              icon={<RotateCcw className="size-4" aria-hidden="true" />}
-            />
-            <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border bg-background">
+          <SettingsSection title="Session flow">
+            <div className="divide-y divide-border">
               <SettingToggle
                 title="Auto-start breaks"
-                description="After focus ends."
+                description="Begin the break as soon as focus ends."
                 checked={settings.autoStartBreaks}
                 onCheckedChange={(autoStartBreaks) =>
                   updateSettings({ autoStartBreaks })
@@ -464,29 +516,20 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
               />
               <SettingToggle
                 title="Auto-start focus"
-                description="After a break ends."
+                description="Begin the next round as soon as the break ends."
                 checked={settings.autoStartFocus}
                 onCheckedChange={(autoStartFocus) =>
                   updateSettings({ autoStartFocus })
                 }
               />
             </div>
-          </section>
+          </SettingsSection>
 
-          <section
-            className="rounded-xl border border-border/80 bg-card p-4 shadow-sm"
-            aria-labelledby="notifications-heading"
-          >
-            <SettingsSectionHeading
-              id="notifications-heading"
-              title="Notifications"
-              description="End-of-round alerts."
-              icon={<Bell className="size-4" aria-hidden="true" />}
-            />
-            <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border bg-background">
+          <SettingsSection title="Notifications">
+            <div className="divide-y divide-border">
               <SettingToggle
                 title="Round notifications"
-                description="Chime and in-app alert."
+                description="A chime and an in-app alert when a round finishes."
                 checked={settings.notifications}
                 onCheckedChange={(notifications) =>
                   updateSettings({ notifications })
@@ -502,14 +545,12 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
                       : permission === "unsupported"
                         ? "Not supported here. In-app alerts still work."
                         : permission === "default"
-                          ? "Turn on to allow system alerts for completed rounds."
+                          ? "Turn on to allow system alerts for finished rounds."
                           : settings.desktopAlerts
-                            ? "Show a persistent system alert when a round finishes."
+                            ? "A system alert waits for you when a round finishes."
                             : "System alerts are turned off."
                 }
-                checked={
-                  settings.desktopAlerts && permission === "granted"
-                }
+                checked={settings.desktopAlerts && permission === "granted"}
                 onCheckedChange={changeDesktopAlerts}
                 disabled={
                   !settings.notifications ||
@@ -518,10 +559,10 @@ function SettingsDialog({ controller }: { controller: PomodoroController }) {
                 }
               />
             </div>
-          </section>
+          </SettingsSection>
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-border bg-card px-6 py-4 sm:items-center sm:justify-between">
+        <DialogFooter className="shrink-0 border-t border-border px-6 pb-6 pt-4 sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">Saved automatically</p>
           <DialogClose asChild>
             <Button>Done</Button>
@@ -568,12 +609,12 @@ function ClearHistoryDialog({ onClear }: { onClear: () => void }) {
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="text-muted-foreground"
+          size="sm"
+          className="-mr-2 text-muted-foreground"
           aria-label="Clear Pomodoro history"
-          title="Clear history"
         >
           <Trash2 aria-hidden="true" />
+          Clear
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -593,7 +634,21 @@ function ClearHistoryDialog({ onClear }: { onClear: () => void }) {
   );
 }
 
-function PomodoroInsights({ controller }: { controller: PomodoroController }) {
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    // A long total ("2 hr 35 min") wraps rather than truncating, so the labels
+    // are pushed to the bottom of the row to stay level with each other.
+    <div className="flex h-full min-w-0 flex-col">
+      <p className="text-xl font-semibold leading-tight tracking-[-0.03em] tabular-nums text-foreground sm:text-2xl">
+        {value}
+      </p>
+      <p className="mt-auto pt-1 text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+/** Today's totals, the week behind them, and the last few finished rounds. */
+function PomodoroActivity({ controller }: { controller: PomodoroController }) {
   const { history, now, clearHistory } = controller;
   const today = new Date(now);
   const todayStart = startOfDay(today).getTime();
@@ -637,149 +692,114 @@ function PomodoroInsights({ controller }: { controller: PomodoroController }) {
   const maxDayMs = Math.max(...days.map(({ durationMs }) => durationMs), 1);
 
   return (
-    <section className="mt-6" aria-label="Pomodoro activity">
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <Metric
-            icon={<Timer aria-hidden="true" />}
-            label="Today"
-            value={formatFocusDuration(todayFocusMs)}
-          />
-          <Metric
-            icon={<CheckCircle2 aria-hidden="true" />}
-            label="Rounds"
-            value={String(todaySessions)}
-          />
-          <Metric
-            icon={<Target aria-hidden="true" />}
-            label="Tasks"
-            value={String(todayTaskIds.size)}
-          />
+    <>
+      <section className="mt-10" aria-labelledby="today-heading">
+        <SectionHeading id="today-heading" title="Today" />
+        <div className="grid grid-cols-3 gap-4 sm:gap-6">
+          <Metric value={formatFocusDuration(todayFocusMs)} label="Focused" />
+          <Metric value={String(todaySessions)} label="Rounds" />
+          <Metric value={String(todayTaskIds.size)} label="Tasks" />
         </div>
+      </section>
 
-        <div className="border-t border-border p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-foreground">7 days</h2>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
+      <section className="mt-10" aria-labelledby="week-heading">
+        <SectionHeading
+          id="week-heading"
+          title="Last 7 days"
+          action={
+            <span className="text-sm tabular-nums text-muted-foreground">
               {formatFocusDuration(weeklyTotalMs)}
             </span>
-          </div>
+          }
+        />
+        <div
+          role="img"
+          aria-label={`Seven day focus chart. ${days
+            .map(
+              ({ date, durationMs }) =>
+                `${format(date, "EEEE")}: ${formatFocusDuration(durationMs)}`,
+            )
+            .join(". ")}`}
+          className="grid h-28 grid-cols-7 gap-2"
+        >
+          {days.map(({ date, durationMs }, index) => {
+            const isToday = index === days.length - 1;
+            // A short round still has to be visible, so anything above zero
+            // keeps a floor of a few pixels.
+            const height =
+              durationMs === 0 ? 0 : Math.max(6, (durationMs / maxDayMs) * 100);
 
-          <div
-            role="img"
-            aria-label={`Seven day focus chart. ${days
-              .map(
-                ({ date, durationMs }) =>
-                  `${format(date, "EEEE")}: ${formatFocusDuration(durationMs)}`,
-              )
-              .join(". ")}`}
-            className="mt-5 grid h-32 grid-cols-7 gap-2 sm:gap-3"
-          >
-            {days.map(({ date, durationMs }) => {
-              const height =
-                durationMs === 0
-                  ? 0
-                  : Math.max(8, (durationMs / maxDayMs) * 100);
-
-              return (
-                <div
-                  key={date.toISOString()}
-                  className="flex min-w-0 flex-col items-center gap-2"
-                >
-                  <div className="flex min-h-0 w-full flex-1 items-end justify-center rounded-sm bg-muted">
+            return (
+              <div
+                key={date.toISOString()}
+                title={`${format(date, "EEE")} · ${formatFocusDuration(durationMs)}`}
+                className="flex min-w-0 flex-col items-center gap-2"
+              >
+                <div className="flex w-full min-h-0 flex-1 items-end justify-center">
+                  <div className="flex h-full w-2 items-end rounded-full bg-muted">
                     <div
-                      className="w-full rounded-sm bg-primary transition-[height] duration-300 ease-out"
+                      className={cn(
+                        "w-full rounded-full transition-[height] duration-300 ease-out",
+                        isToday ? "bg-primary" : "bg-foreground/25",
+                      )}
                       style={{ height: `${height}%` }}
                     />
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-foreground">
-                      {format(date, "EEE")}
-                    </p>
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {history.length > 0 ? (
-          <div className="border-t border-border p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <BarChart3
-                  className="size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <h2 className="text-sm font-semibold text-foreground">Recent</h2>
-              </div>
-              <ClearHistoryDialog onClear={clearHistory} />
-            </div>
-            <ul
-              className="mt-2 divide-y divide-border"
-              aria-label="Recent focus sessions"
-            >
-              {history.slice(0, 3).map((session) => (
-                <li
-                  key={session.id}
-                  className="flex items-center gap-3 py-3 first:pt-1 last:pb-0"
+                <p
+                  className={cn(
+                    "text-xs text-muted-foreground",
+                    isToday && "font-medium text-foreground",
+                  )}
                 >
-                  <span
-                    className={cn(
-                      "flex size-8 shrink-0 items-center justify-center rounded-full",
-                      session.completed
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {session.completed ? (
-                      <Check className="size-4" aria-hidden="true" />
-                    ) : (
-                      <Pause className="size-4" aria-hidden="true" />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {sessionTaskLabel(session)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {format(new Date(session.endedAt), "MMM d · h:mm a")}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                    {formatFocusDuration(session.durationMs)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-    </section>
-  );
-}
+                  {format(date, "EEE")}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-5 sm:p-6">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&_svg]:size-4">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xl font-semibold tracking-[-0.025em] tabular-nums text-foreground">
-          {value}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
-      </div>
-    </div>
+      {history.length > 0 ? (
+        <section className="mt-10" aria-labelledby="recent-heading">
+          <SectionHeading
+            id="recent-heading"
+            title="Recent rounds"
+            action={<ClearHistoryDialog onClear={clearHistory} />}
+          />
+          <ul
+            className="divide-y divide-border"
+            aria-label="Recent focus sessions"
+          >
+            {history.slice(0, RECENT_SESSION_COUNT).map((session) => (
+              <li key={session.id} className="flex items-baseline gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {sessionTaskLabel(session)}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    <span className="tabular-nums">
+                      {format(new Date(session.endedAt), "MMM d · h:mm a")}
+                    </span>
+                    {session.completed ? null : (
+                      <>
+                        <span aria-hidden="true" className="px-1.5">
+                          ·
+                        </span>
+                        stopped early
+                      </>
+                    )}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                  {formatFocusDuration(session.durationMs)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -797,10 +817,7 @@ function PomodoroPage({
   const hasRoundProgress =
     running || timer.status === "paused" || timer.accumulatedMs > 0;
   const openSelectedSliceMs =
-    isFocus &&
-    running &&
-    timer.activeStartedAt !== null &&
-    selectedTask
+    isFocus && running && timer.activeStartedAt !== null && selectedTask
       ? Math.max(
           0,
           Math.min(
@@ -809,21 +826,19 @@ function PomodoroPage({
           ),
         )
       : 0;
-  const selectedFocusedMs =
-    (selectedTask?.focusedMs ?? 0) + openSelectedSliceMs;
+  const selectedFocusedMs = (selectedTask?.focusedMs ?? 0) + openSelectedSliceMs;
   const progressRound =
     (timer.completedFocusCount % settings.longBreakInterval) + 1;
-  const primaryLabel = running
-    ? isFocus
-      ? "Pause focus"
-      : "Pause break"
-    : timer.status === "paused" || timer.accumulatedMs > 0
-      ? isFocus
-        ? "Resume focus"
-        : "Resume break"
-      : isFocus
-        ? "Start focus"
-        : "Start break";
+  const roundHint = isFocus
+    ? `Round ${progressRound} of ${settings.longBreakInterval}`
+    : "Focus is up next";
+  const hint =
+    timer.status === "paused" ? `Paused · ${roundHint}` : roundHint;
+  const primaryAction = running
+    ? "Pause"
+    : hasRoundProgress
+      ? "Resume"
+      : "Start";
   const canStart = !isFocus || selectedTask !== null;
 
   const completeCurrentTask = () => {
@@ -835,207 +850,150 @@ function PomodoroPage({
 
   return (
     <>
-      <div className="-mt-4 mb-4 flex justify-end">
-        <SettingsDialog controller={controller} />
+      <div className="flex flex-col items-center">
+        <TimerDial
+          remainingMs={remainingMs}
+          plannedDurationMs={timer.plannedDurationMs}
+          phase={timer.phase}
+          status={timer.status}
+          hint={hint}
+        />
+
+        <div className="mt-8 flex items-center gap-1.5">
+          <Button
+            size="lg"
+            className="min-w-40"
+            aria-label={`${primaryAction} ${PHASE_LABELS[timer.phase].toLowerCase()}`}
+            disabled={!running && !canStart}
+            onClick={running ? controller.pause : controller.start}
+          >
+            {running ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+            {primaryAction}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            aria-label={`Restart ${PHASE_LABELS[timer.phase].toLowerCase()}`}
+            title="Restart round"
+            disabled={!hasRoundProgress}
+            onClick={controller.restart}
+          >
+            <RotateCcw aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            aria-label={isFocus ? "End focus" : "Skip break"}
+            title={isFocus ? "End focus" : "Skip break"}
+            disabled={isFocus && !hasRoundProgress}
+            onClick={controller.skip}
+          >
+            <SkipForward aria-hidden="true" />
+          </Button>
+        </div>
+
+        {isFocus && !selectedTask ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Pick a focus task below to start the round.
+          </p>
+        ) : null}
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="grid xl:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="flex min-w-0 flex-col items-center p-6 sm:p-8 xl:p-10">
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <span className="flex size-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  {isFocus ? (
-                    <Target className="size-4" aria-hidden="true" />
-                  ) : (
-                    <Coffee className="size-4" aria-hidden="true" />
-                  )}
-                </span>
-                {PHASE_LABELS[timer.phase]}
-              </p>
-              <div
-                className="flex items-center gap-1.5"
-                role="img"
-                aria-label={`Round ${progressRound} of ${settings.longBreakInterval}`}
-              >
-                {Array.from(
-                  { length: settings.longBreakInterval },
-                  (_, index) => {
-                    const completed =
-                      timer.phase === "longBreak"
-                        ? true
-                        : index <
-                          timer.completedFocusCount % settings.longBreakInterval;
-                    const current = isFocus && index === progressRound - 1;
-
-                    return (
-                      <span
-                        key={index}
-                        aria-hidden="true"
-                        className={cn(
-                          "h-1.5 w-5 rounded-full bg-muted",
-                          completed && "bg-foreground/35",
-                          current && "bg-primary",
-                        )}
-                      />
-                    );
-                  },
-                )}
-              </div>
-            </div>
-
-            <div className="my-8 sm:my-10">
-              <TimerProgress
-                remainingMs={remainingMs}
-                plannedDurationMs={timer.plannedDurationMs}
-                phase={timer.phase}
-                status={timer.status}
-              />
-            </div>
-
-            <div className="flex w-full max-w-md items-center justify-center gap-2">
-              <Button
-                size="lg"
-                className="min-w-44 flex-1 sm:flex-none"
-                disabled={!running && !canStart}
-                onClick={running ? controller.pause : controller.start}
-              >
-                {running ? (
-                  <Pause aria-hidden="true" />
-                ) : (
-                  <Play aria-hidden="true" />
-                )}
-                {primaryLabel}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={`Restart ${PHASE_LABELS[timer.phase].toLowerCase()}`}
-                title={`Restart ${PHASE_LABELS[timer.phase].toLowerCase()}`}
-                disabled={!hasRoundProgress}
-                onClick={controller.restart}
-              >
-                <RotateCcw aria-hidden="true" />
-              </Button>
+      <section className="mt-10" aria-labelledby="focus-task-heading">
+        <SectionHeading
+          id="focus-task-heading"
+          title={isFocus ? "Focus task" : "Next task"}
+          action={
+            selectedTask ? (
               <Button
                 variant="ghost"
-                size="icon"
-                aria-label={isFocus ? "End focus" : "Skip break"}
-                title={isFocus ? "End focus" : "Skip break"}
-                disabled={isFocus && !hasRoundProgress}
-                onClick={controller.skip}
+                size="sm"
+                className="-mr-2 text-muted-foreground"
+                onClick={() => setTaskPickerOpen(true)}
               >
-                <SkipForward aria-hidden="true" />
+                Change
               </Button>
-            </div>
-          </div>
+            ) : null
+          }
+        />
 
-          <aside className="border-t border-border bg-background/55 p-6 sm:p-8 xl:border-l xl:border-t-0">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {isFocus ? "Focus task" : "Up next"}
-              </h2>
-              <span className="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <Target className="size-4" aria-hidden="true" />
-              </span>
-            </div>
-
-            {selectedTask ? (
-              <div className="mt-5">
-                <p className="break-words text-lg font-semibold leading-7 tracking-[-0.02em] text-foreground">
-                  {selectedTask.title}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {selectedTask ? (
+          // The same row the task pages use, so checking it off here means what
+          // it means everywhere else.
+          <div className="flex items-start gap-2 sm:gap-3">
+            <Checkbox
+              className="-ml-3 -mt-2.5"
+              checked={false}
+              onCheckedChange={completeCurrentTask}
+              aria-label={`Mark ${selectedTask.title} as complete`}
+              title="Complete task"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm font-medium leading-6 text-foreground">
+                {selectedTask.title}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   {selectedTask.dueAt ? (
-                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Clock3 className="size-4" aria-hidden="true" />
-                      <span className="tabular-nums">
-                        {formatDueDate(selectedTask.dueAt)}
-                      </span>
-                    </p>
-                  ) : null}
-                  {selectedFocusedMs > 0 ? (
-                    <p
-                      className="flex items-center gap-1.5 text-sm text-muted-foreground"
-                      aria-label={`${formatFocusDuration(selectedFocusedMs)} focused`}
-                    >
-                      <Timer className="size-4" aria-hidden="true" />
-                      {formatFocusDuration(selectedFocusedMs)}
-                    </p>
-                  ) : null}
-                  <TagChipList
-                    tags={resolveTags(selectedTask.tagIds, tagsById)}
-                  />
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-2">
-                  <TaskPickerDialog
-                    open={taskPickerOpen}
-                    onOpenChange={setTaskPickerOpen}
-                    tasks={activeTasks}
-                    selectedTaskId={selectedTask.id}
-                    tagsById={tagsById}
-                    onSelect={controller.selectTask}
-                    running={running && isFocus}
-                    trigger={
-                      <Button variant="outline" className="w-full">
-                        Change
-                      </Button>
-                    }
-                  />
-                  {isFocus ? (
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={completeCurrentTask}
-                    >
-                      <CheckCircle2 aria-hidden="true" />
-                      Complete
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : (
-              <div className="mt-8 text-center">
-                <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <ListTodo className="size-5" aria-hidden="true" />
-                </span>
-                <TaskPickerDialog
-                  open={taskPickerOpen}
-                  onOpenChange={setTaskPickerOpen}
-                  tasks={activeTasks}
-                  selectedTaskId={null}
-                  tagsById={tagsById}
-                  onSelect={controller.selectTask}
-                  running={false}
-                  trigger={
-                    <Button
-                      className="mt-5 w-full"
-                      disabled={activeTasks.length === 0}
-                    >
-                      <Target aria-hidden="true" />
-                      Choose a task
-                    </Button>
-                  }
-                />
-                {activeTasks.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Add a task first.
+                    <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
+                  ) : (
+                    <CalendarOff aria-hidden="true" className="size-4 shrink-0" />
+                  )}
+                  <span className="break-words tabular-nums">
+                    {selectedTask.dueAt
+                      ? formatDueDate(selectedTask.dueAt)
+                      : "No due date"}
+                  </span>
+                </p>
+                {selectedFocusedMs > 0 ? (
+                  <p className="text-sm tabular-nums text-muted-foreground">
+                    {formatFocusDuration(selectedFocusedMs)} focused
                   </p>
                 ) : null}
+                <TagChipList tags={resolveTags(selectedTask.tagIds, tagsById)} />
               </div>
-            )}
-          </aside>
-        </div>
-      </Card>
+            </div>
+          </div>
+        ) : (
+          <EmptyPanel
+            icon={ListTodo}
+            title="No task chosen"
+            description={
+              activeTasks.length === 0
+                ? "Add a task on the Tasks page, then come back to focus."
+                : "Focus time is credited to the task you pick."
+            }
+            action={
+              <Button
+                disabled={activeTasks.length === 0}
+                onClick={() => setTaskPickerOpen(true)}
+              >
+                Choose a task
+              </Button>
+            }
+          />
+        )}
+      </section>
+
+      <TaskPickerDialog
+        open={taskPickerOpen}
+        onOpenChange={setTaskPickerOpen}
+        tasks={activeTasks}
+        selectedTaskId={selectedTask?.id ?? null}
+        tagsById={tagsById}
+        onSelect={controller.selectTask}
+        running={running && isFocus}
+      />
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">
-        {PHASE_LABELS[timer.phase]}. {timer.status}.
+        {PHASE_LABELS[timer.phase]}, {STATUS_LABELS[timer.status]}.
       </p>
 
-      <PomodoroInsights controller={controller} />
+      <PomodoroActivity controller={controller} />
     </>
   );
 }
 
-export { PomodoroPage };
+export { PomodoroPage, PomodoroSettingsDialog };
