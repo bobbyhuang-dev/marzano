@@ -214,7 +214,7 @@ function NumberCombobox({
           role="listbox"
           style={{ maxHeight: placement.maxHeight }}
           className={cn(
-            "absolute inset-x-0 z-50 overflow-y-auto overscroll-contain rounded-md border border-border bg-background p-1 shadow-[0_12px_32px_rgba(0,0,0,0.16),0_0_0_1px_rgba(0,0,0,0.06)]",
+            "absolute inset-x-0 z-50 overflow-y-auto overscroll-contain rounded-md border border-border bg-background p-1 shadow-popover dark:bg-popover",
             placement.above ? "bottom-full mb-1" : "top-full mt-1",
           )}
         >

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { ListTodo, PanelLeft, PanelLeftClose, type LucideIcon } from "lucide-react";
+import {
+  ListTodo,
+  Monitor,
+  Moon,
+  PanelLeft,
+  PanelLeftClose,
+  Sun,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   Sheet,
@@ -7,6 +15,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { nextTheme, type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "marzano.sidebar.v1";
@@ -36,6 +45,48 @@ function saveCollapsed(collapsed: boolean) {
   } catch {
     // A sidebar that forgets its width is better than one that crashes.
   }
+}
+
+const FOOTER_BUTTON =
+  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+const THEME_LABELS: Record<ThemePreference, { label: string; icon: LucideIcon }> = {
+  system: { label: "System theme", icon: Monitor },
+  light: { label: "Light theme", icon: Sun },
+  dark: { label: "Dark theme", icon: Moon },
+};
+
+interface SidebarThemeToggleProps {
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
+  collapsed: boolean;
+}
+
+/**
+ * One button rather than three: the choice is a preference people set once,
+ * and cycling keeps it legible at the collapsed width, where a segmented
+ * control would not fit.
+ */
+function SidebarThemeToggle({
+  theme,
+  onThemeChange,
+  collapsed,
+}: SidebarThemeToggleProps) {
+  const { label, icon: Icon } = THEME_LABELS[theme];
+  const upcoming = THEME_LABELS[nextTheme(theme)].label.toLowerCase();
+
+  return (
+    <button
+      type="button"
+      onClick={() => onThemeChange(nextTheme(theme))}
+      aria-label={`${label}. Switch to ${upcoming}`}
+      title={`${label}. Switch to ${upcoming}`}
+      className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0")}
+    >
+      <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
+      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>{label}</span>
+    </button>
+  );
 }
 
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
@@ -121,6 +172,8 @@ interface AppSidebarProps {
   items: SidebarItem[];
   activeId: string;
   onSelect: (id: string) => void;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
   /** The drawer state for narrow screens, where the sidebar cannot stay docked. */
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
@@ -130,6 +183,8 @@ function AppSidebar({
   items,
   activeId,
   onSelect,
+  theme,
+  onThemeChange,
   menuOpen,
   onMenuOpenChange,
 }: AppSidebarProps) {
@@ -161,16 +216,23 @@ function AppSidebar({
           onSelect={onSelect}
           collapsed={collapsed}
         />
-        <div className={cn("shrink-0 border-t border-border p-3", collapsed && "px-2")}>
+        <div
+          className={cn(
+            "flex shrink-0 flex-col gap-1 border-t border-border p-3",
+            collapsed && "items-center px-2",
+          )}
+        >
+          <SidebarThemeToggle
+            theme={theme}
+            onThemeChange={onThemeChange}
+            collapsed={collapsed}
+          />
           <button
             type="button"
             onClick={toggleCollapsed}
             aria-expanded={!collapsed}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              collapsed && "w-11 justify-center px-0",
-            )}
+            className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0")}
           >
             {collapsed ? (
               <PanelLeft className="size-[1.125rem] shrink-0" aria-hidden="true" />
@@ -192,7 +254,7 @@ function AppSidebar({
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={onMenuOpenChange}>
-        <SheetContent side="left" className="w-[17rem] max-w-[85vw] bg-card lg:hidden">
+        <SheetContent side="left" className="w-[17rem] max-w-[85vw] bg-card dark:bg-card lg:hidden">
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <SheetDescription className="sr-only">
             Switch between your task views.
@@ -207,6 +269,13 @@ function AppSidebar({
               onMenuOpenChange(false);
             }}
           />
+          <div className="shrink-0 border-t border-border p-3">
+            <SidebarThemeToggle
+              theme={theme}
+              onThemeChange={onThemeChange}
+              collapsed={false}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     </>

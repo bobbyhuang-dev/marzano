@@ -102,7 +102,7 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
           id={panelId}
           role="radiogroup"
           aria-label="Sort by due date"
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-[0_10px_38px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)]"
+          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-popover"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
             <span className="px-1 text-xs font-medium text-muted-foreground">

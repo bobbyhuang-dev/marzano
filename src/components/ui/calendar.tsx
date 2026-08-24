@@ -33,7 +33,10 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("w-fit bg-background p-1", className)}
+      // Transparent rather than bg-background: the calendar sits inside a
+      // dialog, which climbs to bg-popover in dark mode, so a hardcoded page
+      // background would paint a darker block over its own surface.
+      className={cn("w-fit bg-transparent p-1", className)}
       style={
         {
           "--calendar-cell-size": "clamp(2.5rem, 13.75vw, 2.75rem)",

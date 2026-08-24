@@ -42,6 +42,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useCompletedCleanup } from "@/hooks/use-completed-cleanup";
 import { useDueReminders } from "@/hooks/use-due-reminders";
 import { usePomodoro } from "@/hooks/use-pomodoro";
+import { useTheme } from "@/hooks/use-theme";
 import {
   COMPLETED_RETENTION_DAYS,
   countTasksByTag,
@@ -66,9 +67,16 @@ import {
   tagsById as toTagsById,
   type Tag,
 } from "@/lib/tags";
+import { type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 type ViewId = "tasks" | "pomodoro" | "completed" | "tags";
+
+const THEME_ANNOUNCEMENTS: Record<ThemePreference, string> = {
+  system: "Theme now follows your system.",
+  light: "Theme set to light.",
+  dark: "Theme set to dark.",
+};
 
 const VIEW_TITLES: Record<ViewId, string> = {
   tasks: "Tasks",
@@ -106,6 +114,7 @@ function App() {
     );
   }, []);
   const pomodoro = usePomodoro(tasks, addFocusedTime);
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [view, setView] = useState<ViewId>("tasks");
   /** The tag whose own page is open, or null while the tag list is showing. */
   const [openTagId, setOpenTagId] = useState<string | null>(null);
@@ -294,6 +303,11 @@ function App() {
     );
   };
 
+  const selectTheme = (next: ThemePreference) => {
+    setTheme(next);
+    setStatusMessage(THEME_ANNOUNCEMENTS[next]);
+  };
+
   const openTagPage = (tagId: string) => {
     setOpenTagId(tagId);
     setView("tags");
@@ -308,6 +322,8 @@ function App() {
         items={navItems}
         activeId={view}
         onSelect={selectView}
+        theme={theme}
+        onThemeChange={selectTheme}
         menuOpen={menuOpen}
         onMenuOpenChange={setMenuOpen}
       />
@@ -533,7 +549,7 @@ function App() {
           </p>
         </div>
       </main>
-      <Toaster />
+      <Toaster theme={resolvedTheme} />
     </div>
   );
 }

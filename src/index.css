@@ -30,6 +30,16 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  /* Carries its own alpha, so it can go from a light wash to a heavy one. */
+  --color-overlay: hsl(var(--overlay));
+
+  --shadow-card: var(--elevation-card);
+  --shadow-popover: var(--elevation-popover);
+  --shadow-dialog: var(--elevation-dialog);
+  --shadow-toast: var(--elevation-toast);
+  --shadow-thumb: var(--elevation-thumb);
+  --shadow-swatch: var(--elevation-swatch);
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -121,7 +131,61 @@
     --border: 0 0% 88%;
     --input: 0 0% 82%;
     --ring: 0 0% 20%;
+    --overlay: 0 0% 9% / 0.25;
     --radius: 0.875rem;
+
+    /* On white, depth is a soft drop shadow plus a hairline of black. */
+    --elevation-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 30px rgb(0 0 0 / 0.05),
+      0 0 0 1px rgb(0 0 0 / 0.07);
+    --elevation-popover: 0 10px 38px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.08);
+    --elevation-dialog: 0 20px 60px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.08);
+    --elevation-toast: 0 14px 40px rgb(0 0 0 / 0.16), 0 0 0 1px rgb(0 0 0 / 0.08);
+    --elevation-thumb: 0 1px 3px rgb(0 0 0 / 0.22);
+    --elevation-swatch: inset 0 0 0 1px rgb(0 0 0 / 0.09);
+  }
+
+  /*
+   * Set by lib/theme.ts (and by the pre-paint script in index.html, so the
+   * first frame is already the right colour). The palette stays neutral and
+   * inverts around the same greys the light one is built from: surfaces climb
+   * away from the background rather than sinking into it.
+   */
+  :root.dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 21%;
+    --accent-foreground: 0 0% 97%;
+    /* Lifted off the light red: it has to clear 4.5:1 against a near-black
+       page while still carrying white button text. */
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 28%;
+    --ring: 0 0% 75%;
+    --overlay: 0 0% 0% / 0.6;
+
+    /* Black shadows barely register here, so the hairline turns white and
+       does most of the separating. */
+    --elevation-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 30px rgb(0 0 0 / 0.45),
+      0 0 0 1px rgb(255 255 255 / 0.07);
+    --elevation-popover: 0 10px 38px rgb(0 0 0 / 0.6),
+      0 0 0 1px rgb(255 255 255 / 0.09);
+    --elevation-dialog: 0 20px 60px rgb(0 0 0 / 0.7),
+      0 0 0 1px rgb(255 255 255 / 0.1);
+    --elevation-toast: 0 14px 40px rgb(0 0 0 / 0.6),
+      0 0 0 1px rgb(255 255 255 / 0.1);
+    --elevation-thumb: 0 1px 3px rgb(0 0 0 / 0.6);
+    --elevation-swatch: inset 0 0 0 1px rgb(255 255 255 / 0.16);
   }
 
   * {
@@ -131,6 +195,10 @@
   html {
     color-scheme: light;
     background: hsl(var(--background));
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -171,6 +239,10 @@
 
   ::selection {
     background: hsl(var(--primary) / 0.18);
+  }
+
+  :root.dark ::selection {
+    background: hsl(var(--primary) / 0.26);
   }
 }
 

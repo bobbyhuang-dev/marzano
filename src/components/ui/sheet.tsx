@@ -18,11 +18,11 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(({ className, children, side = "right", ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-[200] bg-foreground/25 backdrop-blur-[2px] data-[state=open]:animate-overlay-in" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-[200] bg-overlay backdrop-blur-[2px] data-[state=open]:animate-overlay-in" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-y-0 z-[201] flex w-full max-w-md flex-col bg-background shadow-[0_20px_60px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.08)]",
+        "fixed inset-y-0 z-[201] flex w-full max-w-md flex-col bg-background shadow-dialog dark:bg-popover",
         side === "left"
           ? "left-0 data-[state=open]:animate-sheet-in-left"
           : "right-0 data-[state=open]:animate-sheet-in",

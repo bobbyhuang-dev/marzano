@@ -6,6 +6,32 @@
     <meta name="theme-color" content="#f7f7f7" />
     <meta name="description" content="A focused task list with due reminders, tags, and a built-in Pomodoro timer." />
     <title>Marzano</title>
+    <!--
+      The theme has to be on the document before the first paint, or a dark-mode
+      reader gets a white flash on every load. Mirrors src/lib/theme.ts, which
+      takes over once React mounts.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("marzano.theme.v1");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+
+          document.documentElement.classList.toggle("dark", theme === "dark");
+          document.documentElement.style.colorScheme = theme;
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", theme === "dark" ? "#121212" : "#f7f7f7");
+        } catch (error) {
+          // Storage can be blocked; the light default is already in the CSS.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

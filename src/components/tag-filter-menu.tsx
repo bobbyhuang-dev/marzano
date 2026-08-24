@@ -114,7 +114,7 @@ function TagFilterMenu({
           id={panelId}
           role="group"
           aria-label="Filter by tag"
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-[0_10px_38px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.08)]"
+          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-popover"
         >
           {sorted.length === 0 ? (
             <div className="px-4 py-5 text-center">

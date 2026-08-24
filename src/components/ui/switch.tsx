@@ -33,7 +33,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       >
         <span
           className={cn(
-            "block size-5 rounded-full bg-background shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-transform duration-200 ease-out",
+            "block size-5 rounded-full bg-background shadow-thumb transition-transform duration-200 ease-out",
             checked ? "translate-x-5" : "translate-x-0",
           )}
         />
