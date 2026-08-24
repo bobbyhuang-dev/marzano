@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const SIDEBAR_STORAGE_KEY = "todos.sidebar.v1";
+const SIDEBAR_STORAGE_KEY = "marzano.sidebar.v1";
 
 export interface SidebarItem {
   id: string;
@@ -51,7 +51,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       </span>
       {collapsed ? null : (
         <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-          Todos
+          Marzano
         </span>
       )}
     </div>

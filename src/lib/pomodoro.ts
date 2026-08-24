@@ -56,9 +56,9 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   desktopAlerts: true,
 };
 
-export const POMODORO_SETTINGS_STORAGE_KEY = "todos.pomodoro.settings.v1";
-export const POMODORO_TIMER_STORAGE_KEY = "todos.pomodoro.timer.v1";
-export const POMODORO_HISTORY_STORAGE_KEY = "todos.pomodoro.history.v1";
+export const POMODORO_SETTINGS_STORAGE_KEY = "marzano.pomodoro.settings.v1";
+export const POMODORO_TIMER_STORAGE_KEY = "marzano.pomodoro.timer.v1";
+export const POMODORO_HISTORY_STORAGE_KEY = "marzano.pomodoro.history.v1";
 
 /** Keeps local storage bounded while retaining enough recent data for trends. */
 export const POMODORO_HISTORY_LIMIT = 500;

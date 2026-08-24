@@ -1,4 +1,4 @@
-# Tasks
+# Marzano
 
 A focused task list with due reminders, tags, and a built-in Pomodoro timer. Everything runs in the browser and is stored on your device — no account, no server, no network calls.
 
@@ -40,7 +40,7 @@ pnpm lint      # run ESLint
 
 ## Your data
 
-Everything lives in your browser's `localStorage` under keys prefixed `todos.` — tasks, tags, the due sort, and the Pomodoro settings, timer, and session history. Nothing is uploaded anywhere. The flip side is that the data is per-browser and per-device: clearing site data erases it, and there is no sync between browsers. Desktop alerts additionally need notification permission, which the Pomodoro settings will ask for.
+Everything lives in your browser's `localStorage` under keys prefixed `marzano.` — tasks, tags, the due sort, and the Pomodoro settings, timer, and session history. Nothing is uploaded anywhere. The flip side is that the data is per-browser and per-device: clearing site data erases it, and there is no sync between browsers. Desktop alerts additionally need notification permission, which the Pomodoro settings will ask for.
 
 ## Built with
 

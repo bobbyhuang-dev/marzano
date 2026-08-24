@@ -53,7 +53,7 @@ export const DEFAULT_TAG_COLOR = TAG_COLORS[0].hex;
 /** Long enough for “Organic chemistry”, short enough to stay a chip. */
 export const MAX_TAG_NAME_LENGTH = 24;
 
-export const TAGS_STORAGE_KEY = "todos.tags.v1";
+export const TAGS_STORAGE_KEY = "marzano.tags.v1";
 
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i;
 

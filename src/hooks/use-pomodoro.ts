@@ -66,7 +66,7 @@ const MAX_TIMER_DELAY = 2_147_000_000;
 const MAX_CATCH_UP_TRANSITIONS = 48;
 const MAX_DURATION_MINUTES = 120;
 const MAX_BREAK_INTERVAL = 12;
-const DESKTOP_NOTIFICATION_TAG = "todos-pomodoro-round";
+const DESKTOP_NOTIFICATION_TAG = "marzano-pomodoro-round";
 
 type AudioContextConstructor = typeof AudioContext;
 

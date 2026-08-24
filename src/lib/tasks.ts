@@ -31,7 +31,7 @@ export function isDateOnlyDue(value: string): boolean {
   return DATE_ONLY_PATTERN.test(value);
 }
 
-export const TASKS_STORAGE_KEY = "todos.tasks.v1";
+export const TASKS_STORAGE_KEY = "marzano.tasks.v1";
 
 function isIsoInstant(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
@@ -318,7 +318,7 @@ export function isTaskDue(task: Task, now = Date.now()): boolean {
 /** How the open task list is ordered: as it was entered, or by deadline. */
 export type DueSort = "default" | "asc" | "desc";
 
-export const DUE_SORT_STORAGE_KEY = "todos.due-sort.v1";
+export const DUE_SORT_STORAGE_KEY = "marzano.due-sort.v1";
 
 function isDueSort(value: unknown): value is DueSort {
   return value === "default" || value === "asc" || value === "desc";

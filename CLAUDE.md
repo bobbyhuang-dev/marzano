@@ -27,7 +27,7 @@ A single-page, offline-only task manager: React 19 + Vite 8 + Tailwind v4 + shad
 - `lib/tags.ts` — `Tag`, the 30-colour palette, WCAG-based `readableTextColor`.
 - `lib/pomodoro.ts` — settings, timer state, session history (types, validation, persistence only; no React).
 
-**localStorage is the only persistence.** Keys are versioned: `todos.tasks.v1`, `todos.tags.v1`, `todos.due-sort.v1`, `todos.pomodoro.{settings,timer,history}.v1`. Every module reads through a tolerant `toX()` validator that coerces missing or corrupt fields to defaults rather than discarding the record (only records with no usable identity are dropped), and every write is wrapped in try/catch so the app still runs when storage is unavailable. **When you add a field to `Task`, `Tag`, or `PomodoroSettings`, extend the corresponding validator — anything it does not read is silently lost on the next load.** App-level `useEffect`s save each state slice on change; components never touch localStorage.
+**localStorage is the only persistence.** Keys are versioned: `marzano.tasks.v1`, `marzano.tags.v1`, `marzano.due-sort.v1`, `marzano.sidebar.v1`, `marzano.pomodoro.{settings,timer,history}.v1`. Every module reads through a tolerant `toX()` validator that coerces missing or corrupt fields to defaults rather than discarding the record (only records with no usable identity are dropped), and every write is wrapped in try/catch so the app still runs when storage is unavailable. **When you add a field to `Task`, `Tag`, or `PomodoroSettings`, extend the corresponding validator — anything it does not read is silently lost on the next load.** App-level `useEffect`s save each state slice on change; components never touch localStorage.
 
 ### Due dates
 
