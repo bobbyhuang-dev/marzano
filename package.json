@@ -22,7 +22,10 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "figma-squircle": "^1.1.0",
+    "flubber": "^0.4.2",
     "lucide-react": "^1.33.0",
+    "motion": "^13.1.1",
     "react": "^19.1.1",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.1.1",
@@ -32,6 +35,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/flubber": "^0.4.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",

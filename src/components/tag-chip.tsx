@@ -8,7 +8,8 @@ const CHIP_SIZES = {
 } as const;
 
 interface TagChipProps {
-  tag: Tag;
+  /** Only what a chip draws, so a preview can be built without a real tag. */
+  tag: Pick<Tag, "id" | "name" | "color">;
   size?: keyof typeof CHIP_SIZES;
   className?: string;
 }

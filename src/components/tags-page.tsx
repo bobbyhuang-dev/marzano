@@ -5,7 +5,7 @@ import { EmptyPanel } from "@/components/empty-panel";
 import { TagChip } from "@/components/tag-chip";
 import { TagFormDialog, type TagValues } from "@/components/tag-form-dialog";
 import { TaskList } from "@/components/task-list";
-import { type TaskChanges } from "@/components/edit-task-dialog";
+import { type TaskChanges } from "@/components/task-form-dialog";
 import { Button } from "@/components/ui/button";
 import { isActiveTask, type TagTaskCount, type Task } from "@/lib/tasks";
 import { byTagName, tagColorName, tagTint, type Tag } from "@/lib/tags";
@@ -126,7 +126,7 @@ function TagsPage({
                     <button
                       type="button"
                       onClick={() => onOpenTag(tag.id)}
-                      className="group -ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left ring-offset-background transition-colors duration-150 ease-out hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:-ml-3 sm:px-3"
+                      className="group -ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:-ml-3 sm:px-3"
                     >
                       <TagChip tag={tag} size="md" />
                       <span className="shrink-0 text-sm text-muted-foreground">

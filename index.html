@@ -8,8 +8,10 @@
     <title>Marzano</title>
     <!--
       The theme has to be on the document before the first paint, or a dark-mode
-      reader gets a white flash on every load. Mirrors src/lib/theme.ts, which
-      takes over once React mounts.
+      reader gets a white flash on every load; the accent and the display size
+      are here for the same reason, or the page lays itself out twice. Mirrors
+      src/lib/theme.ts and src/lib/appearance.ts, which take over once React
+      mounts.
     -->
     <script>
       (function () {
@@ -27,6 +29,16 @@
           document
             .querySelector('meta[name="theme-color"]')
             .setAttribute("content", theme === "dark" ? "#121212" : "#f7f7f7");
+
+          // The colours themselves are in index.css, keyed by this attribute,
+          // so the script only has to name the accent.
+          document.documentElement.dataset.accent =
+            localStorage.getItem("marzano.accent.v1") || "graphite";
+
+          var zoom = Number(localStorage.getItem("marzano.zoom.v1"));
+          if (zoom >= 80 && zoom <= 150 && zoom !== 100) {
+            document.documentElement.style.fontSize = zoom + "%";
+          }
         } catch (error) {
           // Storage can be blocked; the light default is already in the CSS.
         }

@@ -1,4 +1,6 @@
 import {
+  useCallback,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -6,6 +8,13 @@ import {
 } from "react";
 import { ChevronDown } from "lucide-react";
 
+import {
+  claimListOpen,
+  measurePlacement,
+  MAX_LIST_HEIGHT,
+  type Placement,
+} from "@/components/ui/combobox-list";
+import { SEGMENT_FOCUS_RING } from "@/components/ui/squircle-segment";
 import { cn } from "@/lib/utils";
 
 interface NumberComboboxProps {
@@ -18,6 +27,12 @@ interface NumberComboboxProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  /**
+   * `seamless` drops the border, fill and shadow for a field that sits on a
+   * squircle segment which already draws the surface. The list is left alone —
+   * it still has to read as a popover over whatever is behind it.
+   */
+  variant?: "outline" | "seamless";
   formatValue?: (value: number) => string;
   onValueChange: (value: number) => void;
   "aria-label": string;
@@ -25,13 +40,19 @@ interface NumberComboboxProps {
   "aria-describedby"?: string;
 }
 
-interface Placement {
-  above: boolean;
-  maxHeight: number;
-}
+const FIELD_VARIANTS = {
+  outline:
+    // Text fields soften the focus ring into a halo (a half-opacity border and a
+    // wider, fainter glow) rather than the full-strength ring buttons use: on the
+    // neutral accent a hard gray outline reads as a mistake, not a highlight.
+    "h-11 rounded-md border border-input bg-background shadow-sm transition-[border-color,box-shadow] duration-150 ease-out focus-visible:border-ring/50 focus-visible:ring-[4px] focus-visible:ring-ring/20",
+  seamless: `h-12 bg-transparent ${SEGMENT_FOCUS_RING}`,
+} as const;
 
-const MIN_LIST_HEIGHT = 96;
-const MAX_LIST_HEIGHT = 192;
+const CHEVRON_VARIANTS = {
+  outline: "h-11",
+  seamless: "h-12",
+} as const;
 
 /**
  * A number field that can be typed into or picked from a list. The list opens
@@ -47,6 +68,7 @@ function NumberCombobox({
   disabled,
   placeholder = "--",
   className,
+  variant = "outline",
   formatValue = String,
   onValueChange,
   ...aria
@@ -70,6 +92,18 @@ function NumberCombobox({
   const displayed =
     draft ?? (value === null ? "" : formatValue(value));
 
+  // Everything that closes the list goes through here, so it also gives up
+  // the claim that opening it took. `useCallback` keeps the identity stable
+  // across renders, so re-claiming recognizes itself and does not close itself.
+  const releaseRef = useRef<() => void>(() => {});
+  const closeList = useCallback(() => {
+    releaseRef.current();
+    setOpen(false);
+    setActiveIndex(-1);
+  }, []);
+
+  useEffect(() => () => releaseRef.current(), []);
+
   const commitDraft = () => {
     if (draft === null) return;
 
@@ -84,8 +118,7 @@ function NumberCombobox({
   const selectOption = (option: number) => {
     setDraft(null);
     onValueChange(option);
-    setOpen(false);
-    setActiveIndex(-1);
+    closeList();
   };
 
   const scrollActiveIntoView = () => {
@@ -98,6 +131,9 @@ function NumberCombobox({
 
   const openList = () => {
     if (disabled) return;
+
+    // Close any other open field list first — see claimListOpen.
+    releaseRef.current = claimListOpen(closeList);
 
     const input = inputRef.current;
     if (input) setPlacement(measurePlacement(input));
@@ -137,14 +173,13 @@ function NumberCombobox({
         return;
       }
       commitDraft();
-      setOpen(false);
+      closeList();
       return;
     }
 
     if (event.key === "Escape" && open) {
       event.preventDefault();
-      setDraft(null);
-      setOpen(false);
+      closeList();
     }
   };
 
@@ -180,11 +215,13 @@ function NumberCombobox({
         }}
         onBlur={() => {
           commitDraft();
-          setOpen(false);
-          setActiveIndex(-1);
+          closeList();
         }}
         onKeyDown={handleKeyDown}
-        className="peer h-11 w-full rounded-md border border-input bg-background py-2 pl-3 pr-8 text-sm tabular-nums text-foreground shadow-sm ring-offset-background transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          "peer w-full py-2 pl-3 pr-8 text-sm tabular-nums text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          FIELD_VARIANTS[variant],
+        )}
         {...aria}
       />
       <button
@@ -197,12 +234,15 @@ function NumberCombobox({
           event.preventDefault();
           inputRef.current?.focus();
           if (open) {
-            setOpen(false);
+            closeList();
             return;
           }
           openList();
         }}
-        className="absolute right-0 top-0 flex h-11 w-8 items-center justify-center text-muted-foreground disabled:opacity-50"
+        className={cn(
+          "absolute right-0 top-0 flex w-8 items-center justify-center text-muted-foreground disabled:opacity-50",
+          CHEVRON_VARIANTS[variant],
+        )}
       >
         <ChevronDown className="size-4" aria-hidden="true" />
       </button>
@@ -241,37 +281,6 @@ function NumberCombobox({
       ) : null}
     </div>
   );
-}
-
-function measurePlacement(input: HTMLElement): Placement {
-  const rect = input.getBoundingClientRect();
-  const bounds = scrollParentRect(input);
-  const above = rect.top - bounds.top;
-  const below = bounds.bottom - rect.bottom;
-  const room = Math.max(above, below);
-
-  return {
-    above: above > below,
-    maxHeight: Math.max(
-      MIN_LIST_HEIGHT,
-      Math.min(MAX_LIST_HEIGHT, room - 12),
-    ),
-  };
-}
-
-/** Bounds of the nearest scrolling ancestor, which is what clips the list. */
-function scrollParentRect(node: HTMLElement): { top: number; bottom: number } {
-  let current = node.parentElement;
-
-  while (current) {
-    const { overflowY } = window.getComputedStyle(current);
-    if (overflowY === "auto" || overflowY === "scroll") {
-      return current.getBoundingClientRect();
-    }
-    current = current.parentElement;
-  }
-
-  return { top: 0, bottom: window.innerHeight };
 }
 
 export { NumberCombobox };

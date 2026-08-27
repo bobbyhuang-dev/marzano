@@ -97,8 +97,11 @@ function TagColorPicker({
               // The inset hairline keeps pale swatches from dissolving into the
               // dialog. It is a class, not an inline style, so the ring below
               // composes with it instead of being overwritten.
-              "relative flex aspect-square w-full items-center justify-center rounded-full shadow-swatch ring-offset-background transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95",
-              selected && "ring-2 ring-foreground ring-offset-2",
+              "relative flex aspect-square w-full items-center justify-center rounded-full shadow-swatch transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95",
+              // Survives focus because focus is an outline rather than a ring: arrowing
+              // across the row moves the selection with it, so the two are always on the
+              // same swatch and a second ring would only overwrite this one.
+              selected && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
             )}
             style={{ backgroundColor: color.hex }}
           >

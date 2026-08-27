@@ -1,5 +1,4 @@
 import {
-  type ComponentProps,
   type CSSProperties,
   type FormEvent,
   type ReactNode,
@@ -10,7 +9,7 @@ import {
   useState,
 } from "react";
 import { addDays, format, startOfDay, startOfMonth } from "date-fns";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,6 +24,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { NumberCombobox } from "@/components/ui/number-combobox";
+import { OptionCombobox } from "@/components/ui/option-combobox";
+import {
+  SEGMENT_FOCUS_RING,
+  SEGMENT_RADIUS,
+  SquircleSegment,
+} from "@/components/ui/squircle-segment";
 import { cn, focusDialogTitleOnTouch } from "@/lib/utils";
 import {
   dueAtToDeadline,
@@ -323,10 +328,21 @@ function DueDatePickerDialog({
                     </Label>
                     {/* Hours and minutes can be typed or picked from the list;
                         the clear control shares the row so the field costs no
-                        extra height. */}
-                    <div className="flex items-center gap-2">
+                        extra height.
+
+                        The squircle sits behind the controls rather than around
+                        them: its clip path would cut off the lists, which have
+                        to escape the field to open. The controls take `relative`
+                        so they paint over the absolutely positioned pill. */}
+                    <div className="relative flex items-center">
+                      <SquircleSegment
+                        leftRadius={SEGMENT_RADIUS}
+                        rightRadius={SEGMENT_RADIUS}
+                        className="absolute inset-0 bg-muted"
+                      />
                       <NumberCombobox
                         id={timeId}
+                        variant="seamless"
                         className="flex-1"
                         aria-label="Hour"
                         disabled={!selectedDate}
@@ -338,10 +354,14 @@ function DueDatePickerDialog({
                         max={12}
                         onValueChange={(hour12) => updateTime({ hour12 })}
                       />
-                      <span aria-hidden="true" className="text-muted-foreground">
+                      <span
+                        aria-hidden="true"
+                        className="relative text-sm text-muted-foreground"
+                      >
                         :
                       </span>
                       <NumberCombobox
+                        variant="seamless"
                         className="flex-1"
                         aria-label="Minutes"
                         disabled={!selectedDate}
@@ -352,36 +372,34 @@ function DueDatePickerDialog({
                         formatValue={pad}
                         onValueChange={(minutes) => updateTime({ minutes })}
                       />
-                      <TimeSelect
+                      {/* The app's own list, never a native <select>: the
+                          platform would open its own picker and draw its own
+                          focus box over the field. */}
+                      <OptionCombobox
                         className="w-20"
                         aria-label="AM or PM"
                         disabled={!selectedDate}
-                        value={hasTime ? parts.meridiem : ""}
-                        onChange={(event) => {
-                          if (!event.target.value) return;
-                          updateTime({ meridiem: event.target.value as Meridiem });
-                        }}
-                      >
-                        {hasTime ? null : <option value="">--</option>}
-                        {MERIDIEM_OPTIONS.map((meridiem) => (
-                          <option key={meridiem} value={meridiem}>
-                            {meridiem}
-                          </option>
-                        ))}
-                      </TimeSelect>
-                      <Button
+                        value={hasTime ? parts.meridiem : null}
+                        options={MERIDIEM_OPTIONS}
+                        onValueChange={(meridiem) =>
+                          updateTime({ meridiem })
+                        }
+                      />
+                      <button
                         type="button"
-                        variant="outline"
-                        size="icon"
                         disabled={!hasTime}
                         aria-label="Clear time"
                         onClick={() => {
                           setTime("");
                           setError("");
                         }}
+                        className={cn(
+                          "relative flex size-12 shrink-0 items-center justify-center text-muted-foreground transition-transform active:scale-90 disabled:pointer-events-none disabled:opacity-40 disabled:active:scale-100",
+                          SEGMENT_FOCUS_RING,
+                        )}
                       >
-                        <X aria-hidden="true" />
-                      </Button>
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
                     </div>
                     {error ? (
                       <p
@@ -439,21 +457,6 @@ function DueDatePickerDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function TimeSelect({ className, ...props }: ComponentProps<"select">) {
-  return (
-    <div className={cn("relative", className)}>
-      <select
-        className="peer h-11 w-full appearance-none rounded-md border border-input bg-background py-2 pl-3 pr-7 text-sm text-foreground shadow-sm ring-offset-background transition-[border-color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        {...props}
-      />
-      <ChevronDown
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground peer-disabled:opacity-50"
-      />
-    </div>
   );
 }
 

@@ -1,5 +1,5 @@
-import { type FormEvent, useId, useRef, useState } from "react";
-import { CalendarClock, CalendarPlus, PencilLine } from "lucide-react";
+import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
+import { CalendarClock, CalendarPlus } from "lucide-react";
 
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { type TagValues } from "@/components/tag-form-dialog";
@@ -30,43 +30,60 @@ export interface TaskChanges {
   tagIds: string[];
 }
 
-interface EditTaskDialogProps {
-  task: Task;
+interface TaskFormDialogProps {
+  trigger: ReactNode;
   tags: Tag[];
-  onSave: (changes: TaskChanges) => void;
+  /** The task being edited; omitted when creating a new one. */
+  task?: Task;
+  /** What a new task starts out due on, so a day can hand over its own date. */
+  defaultDueAt?: string | null;
+  onSubmit: (values: TaskChanges) => void;
   onCreateTag: (values: TagValues) => Tag;
 }
 
-function EditTaskDialog({
-  task,
+/**
+ * One window for both writing and editing a task, like the tag form beside it.
+ * The task page keeps its own inline form -- typing a name and pressing enter is
+ * the fastest way to add one -- so this is for the places a task is written
+ * somewhere other than the top of a list.
+ */
+function TaskFormDialog({
+  trigger,
   tags,
-  onSave,
+  task,
+  defaultDueAt = null,
+  onSubmit,
   onCreateTag,
-}: EditTaskDialogProps) {
+}: TaskFormDialogProps) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [dueAt, setDueAt] = useState(task.dueAt);
-  const [tagIds, setTagIds] = useState(task.tagIds);
+  const [title, setTitle] = useState("");
+  const [dueAt, setDueAt] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [error, setError] = useState("");
   const dialogTitleRef = useRef<HTMLHeadingElement>(null);
   const fieldId = useId();
   const dueFieldId = `${fieldId}-due`;
   const errorId = `${fieldId}-error`;
 
+  const editing = task !== undefined;
   const selectedTags = resolveTags(tagIds, toTagsById(tags));
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (nextOpen) {
-      setTitle(task.title);
-      setDueAt(task.dueAt);
-      setTagIds(task.tagIds);
+      setTitle(task?.title ?? "");
+      setDueAt(task ? task.dueAt : defaultDueAt);
+      setTagIds(task?.tagIds ?? []);
       setError("");
     }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // The dialog is portalled away, but React still bubbles this submit to the
+    // form that renders the trigger, which would submit that form too.
+    event.stopPropagation();
+
     const nextTitle = title.trim();
 
     if (!nextTitle) {
@@ -74,22 +91,13 @@ function EditTaskDialog({
       return;
     }
 
-    onSave({ title: nextTitle, dueAt, tagIds });
+    onSubmit({ title: nextTitle, dueAt, tagIds });
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Edit ${task.title}`}
-          title="Edit task"
-        >
-          <PencilLine aria-hidden="true" />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, dialogTitleRef.current)
@@ -97,10 +105,12 @@ function EditTaskDialog({
       >
         <DialogHeader>
           <DialogTitle ref={dialogTitleRef} tabIndex={-1} className="focus:outline-none">
-            Edit task
+            {editing ? "Edit task" : "New task"}
           </DialogTitle>
           <DialogDescription>
-            Change the name, the due date, or the tags.
+            {editing
+              ? "Change the name, the due date, or the tags."
+              : "Name it, then check the date and add any tags."}
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-5" onSubmit={handleSubmit}>
@@ -113,6 +123,7 @@ function EditTaskDialog({
                 setTitle(event.target.value);
                 if (error) setError("");
               }}
+              placeholder={editing ? undefined : "What needs doing?"}
               aria-invalid={Boolean(error)}
               aria-describedby={error ? errorId : undefined}
               autoComplete="off"
@@ -164,7 +175,7 @@ function EditTaskDialog({
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Save changes</Button>
+            <Button type="submit">{editing ? "Save changes" : "Add task"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -172,4 +183,4 @@ function EditTaskDialog({
   );
 }
 
-export { EditTaskDialog };
+export { TaskFormDialog };

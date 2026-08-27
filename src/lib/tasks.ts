@@ -1,6 +1,15 @@
 import { endOfDay, format, formatDistanceToNowStrict } from "date-fns";
 
-export interface Task {
+import {
+  isPresent,
+  nowIso,
+  purgeTombstones,
+  type SyncMeta,
+  toSyncMeta,
+  touch,
+} from "@/lib/sync";
+
+export interface Task extends SyncMeta {
   id: string;
   title: string;
   /**
@@ -15,6 +24,11 @@ export interface Task {
   tagIds: string[];
   /** Focus time attributed to this task by completed or partial Pomodoros. */
   focusedMs: number;
+}
+
+/** Applies a change to a task and stamps it for the next merge. */
+export function touchTask(task: Task, changes: Partial<Task>): Task {
+  return touch(task, changes);
 }
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,7 +64,7 @@ function isNonnegativeInteger(value: unknown): value is number {
  * fall back to their empty value rather than dropping the whole task; only a
  * record with no usable name is discarded.
  */
-function toTask(value: unknown): Task | null {
+export function toTask(value: unknown): Task | null {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as Partial<Task>;
@@ -58,6 +72,7 @@ function toTask(value: unknown): Task | null {
   if (typeof candidate.title !== "string" || !candidate.title.trim()) return null;
 
   return {
+    ...toSyncMeta(candidate),
     id: candidate.id,
     title: candidate.title,
     dueAt:
@@ -118,6 +133,8 @@ export function createTask(
     completedAt: null,
     tagIds,
     focusedMs: 0,
+    updatedAt: nowIso(),
+    deletedAt: null,
   };
 }
 
@@ -159,19 +176,21 @@ export function removeTagFromTasks(tasks: Task[], tagId: string): Task[] {
     if (!task.tagIds.includes(tagId)) return task;
 
     changed = true;
-    return { ...task, tagIds: task.tagIds.filter((id) => id !== tagId) };
+    return touchTask(task, {
+      tagIds: task.tagIds.filter((id) => id !== tagId),
+    });
   });
 
   return changed ? next : tasks;
 }
 
 export function isActiveTask(task: Task): boolean {
-  return task.completedAt === null;
+  return isPresent(task) && task.completedAt === null;
 }
 
 /** When a completed task gets deleted, or null while it is still on the list. */
 export function completedTaskExpiry(task: Task): number | null {
-  if (!task.completedAt) return null;
+  if (!task.completedAt || !isPresent(task)) return null;
 
   const completed = Date.parse(task.completedAt);
   return Number.isNaN(completed)
@@ -179,15 +198,32 @@ export function completedTaskExpiry(task: Task): number | null {
     : completed + COMPLETED_RETENTION_DAYS * DAY_MS;
 }
 
-/** Drops completed tasks past their retention window, keeping the array identity
- * when nothing expired so React state stays put. */
+/**
+ * Retires completed tasks past their retention window and drops tombstones old
+ * enough to be forgotten, keeping the array identity when nothing expired so
+ * React state stays put.
+ *
+ * An expired task becomes a tombstone rather than vanishing: a device that has
+ * been away still holds the original, and without the tombstone it would push
+ * the task back onto every other device on the next merge.
+ */
 export function purgeExpiredTasks(tasks: Task[], now = Date.now()): Task[] {
-  const kept = tasks.filter((task) => {
+  let changed = false;
+
+  const retired = tasks.map((task) => {
     const expiry = completedTaskExpiry(task);
-    return expiry === null || expiry > now;
+    if (expiry === null || expiry > now) return task;
+
+    changed = true;
+    // Stamped with the moment it expired, not with now, so every device
+    // arrives at the same tombstone.
+    const deletedAt = new Date(expiry).toISOString();
+    return { ...task, deletedAt, updatedAt: deletedAt };
   });
 
-  return kept.length === tasks.length ? tasks : kept;
+  // `purgeTombstones` hands back the same array when nothing is dropped, so an
+  // unremarkable sweep still returns the identity React is holding.
+  return purgeTombstones(changed ? retired : tasks, now);
 }
 
 /** Most recently completed first, so the panel opens on the likeliest undo. */

@@ -102,7 +102,7 @@ function nullableTimestamp(value: unknown): number | null {
       : null;
 }
 
-function toSettings(value: unknown): PomodoroSettings {
+export function toSettings(value: unknown): PomodoroSettings {
   const candidate = isObject(value) ? value : {};
 
   return {
@@ -352,7 +352,7 @@ function toSessionRecord(value: unknown): PomodoroSessionRecord | null {
   };
 }
 
-function toHistory(value: unknown): PomodoroSessionRecord[] {
+export function toHistory(value: unknown): PomodoroSessionRecord[] {
   if (!Array.isArray(value)) return [];
 
   // A session id is stable across reloads. De-duplicating it also prevents a

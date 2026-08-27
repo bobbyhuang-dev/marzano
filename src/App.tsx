@@ -8,28 +8,37 @@ import {
 } from "react";
 import {
   CalendarClock,
+  CalendarDays,
   CalendarPlus,
   ChevronLeft,
   CircleCheckBig,
   ListTodo,
   PanelLeft,
   Plus,
+  DatabaseBackup,
   SearchX,
+  Settings,
   Tags as TagsIcon,
   Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AppSidebar, type SidebarItem } from "@/components/app-sidebar";
+import {
+  AppSidebar,
+  SidebarFooterButton,
+  type SidebarItem,
+} from "@/components/app-sidebar";
+import { BackupDialog } from "@/components/backup-dialog";
+import { CalendarPage } from "@/components/calendar-page";
 import { CompletedTaskList } from "@/components/completed-task-list";
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
-import { type TaskChanges } from "@/components/edit-task-dialog";
 import {
   PomodoroPage,
   PomodoroSettingsDialog,
 } from "@/components/pomodoro-page";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { TagFilterMenu } from "@/components/tag-filter-menu";
 import { type TagValues } from "@/components/tag-form-dialog";
 import {
@@ -37,15 +46,34 @@ import {
   TagSelectTrigger,
 } from "@/components/tag-picker-dialog";
 import { TagDetailPage, TagsPage } from "@/components/tags-page";
+import { type TaskChanges } from "@/components/task-form-dialog";
 import { TaskList } from "@/components/task-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
+import { useAppearance } from "@/hooks/use-appearance";
 import { useCompletedCleanup } from "@/hooks/use-completed-cleanup";
 import { useDueReminders } from "@/hooks/use-due-reminders";
 import { usePomodoro } from "@/hooks/use-pomodoro";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  type AccentId,
+  accentLabel,
+  type ZoomLevel,
+} from "@/lib/appearance";
+import {
+  applyImport,
+  type BackupContents,
+  type ImportMode,
+  summarizeBackup,
+} from "@/lib/backup";
+import {
+  type CalendarScope,
+  loadCalendarScope,
+  saveCalendarScope,
+} from "@/lib/calendar";
+import { isPresent, tombstone } from "@/lib/sync";
 import {
   COMPLETED_RETENTION_DAYS,
   countTasksByTag,
@@ -61,6 +89,7 @@ import {
   saveTasks,
   sortTasksByDue,
   type Task,
+  touchTask,
 } from "@/lib/tasks";
 import {
   createTag,
@@ -69,11 +98,12 @@ import {
   saveTags,
   tagsById as toTagsById,
   type Tag,
+  touchTag,
 } from "@/lib/tags";
 import { type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-type ViewId = "tasks" | "pomodoro" | "completed" | "tags";
+type ViewId = "tasks" | "calendar" | "pomodoro" | "completed" | "tags";
 
 const THEME_ANNOUNCEMENTS: Record<ThemePreference, string> = {
   system: "Theme now follows your system.",
@@ -83,6 +113,7 @@ const THEME_ANNOUNCEMENTS: Record<ThemePreference, string> = {
 
 const VIEW_TITLES: Record<ViewId, string> = {
   tasks: "Tasks",
+  calendar: "Calendar",
   pomodoro: "Pomodoro",
   completed: "Completed",
   tags: "Tags",
@@ -91,6 +122,10 @@ const VIEW_TITLES: Record<ViewId, string> = {
 function App() {
   const [tasks, setTasks] = useState<Task[]>(loadTasks);
   const [tags, setTags] = useState<Tag[]>(loadTags);
+  // Deleting leaves a tombstone behind so the deletion can travel to another
+  // copy of the data; everything downstream works from the records still here.
+  const presentTasks = tasks.filter(isPresent);
+  const presentTags = tags.filter(isPresent);
   const addFocusedTime = useCallback((taskId: string, durationMs: number) => {
     if (!Number.isFinite(durationMs)) return;
 
@@ -112,17 +147,20 @@ function App() {
             ? Number.MAX_SAFE_INTEGER
             : currentDuration + safeDuration;
 
-        return { ...task, focusedMs };
+        return touchTask(task, { focusedMs });
       }),
     );
   }, []);
-  const pomodoro = usePomodoro(tasks, addFocusedTime);
+  const pomodoro = usePomodoro(presentTasks, addFocusedTime);
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const appearance = useAppearance();
   const [view, setView] = useState<ViewId>("tasks");
   /** The tag whose own page is open, or null while the tag list is showing. */
   const [openTagId, setOpenTagId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [dueSort, setDueSort] = useState<DueSort>(loadDueSort);
+  const [calendarScope, setCalendarScope] =
+    useState<CalendarScope>(loadCalendarScope);
   const [menuOpen, setMenuOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [dueValue, setDueValue] = useState<string | null>(null);
@@ -134,21 +172,21 @@ function App() {
   const dueId = useId();
   const errorId = `${titleId}-error`;
 
-  const activeTasks = tasks.filter(isActiveTask);
-  const completedTasks = tasks.filter((task) => !isActiveTask(task));
+  const activeTasks = presentTasks.filter(isActiveTask);
+  const completedTasks = presentTasks.filter((task) => !isActiveTask(task));
   const orderedActiveTasks = sortTasksByDue(activeTasks, dueSort);
   const visibleTasks =
     tagFilter.length === 0
       ? orderedActiveTasks
       : orderedActiveTasks.filter((task) => hasAnyTag(task, tagFilter));
 
-  const tagsById = toTagsById(tags);
-  const tagCounts = countTasksByTag(tasks);
+  const tagsById = toTagsById(presentTags);
+  const tagCounts = countTasksByTag(presentTasks);
   const openTag =
     view === "tags" && openTagId ? (tagsById.get(openTagId) ?? null) : null;
   const draftTags = resolveTags(draftTagIds, tagsById);
 
-  useDueReminders(tasks, setTasks);
+  useDueReminders(presentTasks, setTasks);
   useCompletedCleanup(setTasks);
 
   useEffect(() => {
@@ -163,12 +201,23 @@ function App() {
     saveDueSort(dueSort);
   }, [dueSort]);
 
+  useEffect(() => {
+    saveCalendarScope(calendarScope);
+  }, [calendarScope]);
+
   const navItems: SidebarItem[] = [
     {
       id: "tasks",
       label: VIEW_TITLES.tasks,
       icon: ListTodo,
       count: activeTasks.length,
+    },
+    {
+      // No count: the same open tasks as the row above, laid out by date, so a
+      // second tally of them would only be the first one again.
+      id: "calendar",
+      label: VIEW_TITLES.calendar,
+      icon: CalendarDays,
     },
     {
       id: "pomodoro",
@@ -195,6 +244,15 @@ function App() {
     setOpenTagId(null);
   };
 
+  /** Shared by the form at the top of the task page and the calendar's dialog. */
+  const addTask = ({ title: taskTitle, dueAt, tagIds }: TaskChanges) => {
+    setTasks((currentTasks) => [
+      ...currentTasks,
+      createTask(taskTitle, dueAt, tagIds),
+    ]);
+    setStatusMessage(`Added ${taskTitle}.`);
+  };
+
   const handleAddTask = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedTitle = title.trim();
@@ -205,22 +263,18 @@ function App() {
       return;
     }
 
-    setTasks((currentTasks) => [
-      ...currentTasks,
-      createTask(trimmedTitle, dueValue, draftTagIds),
-    ]);
+    addTask({ title: trimmedTitle, dueAt: dueValue, tagIds: draftTagIds });
     setTitle("");
     setDueValue(null);
     setDraftTagIds([]);
     setError("");
-    setStatusMessage(`Added ${trimmedTitle}.`);
     titleInputRef.current?.focus();
   };
 
   const setCompletedAt = (taskId: string, completedAt: string | null) => {
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
-        task.id === taskId ? { ...task, completedAt } : task,
+        task.id === taskId ? touchTask(task, { completedAt }) : task,
       ),
     );
   };
@@ -248,13 +302,12 @@ function App() {
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
         task.id === taskId
-          ? {
-              ...task,
+          ? touchTask(task, {
               ...changes,
               // A moved deadline earns a fresh reminder.
               remindedAt:
                 task.dueAt === changes.dueAt ? task.remindedAt : null,
-            }
+            })
           : task,
       ),
     );
@@ -263,8 +316,12 @@ function App() {
 
   const deleteTask = (task: Task) => {
     pomodoro.detachCompletedTask(task.id);
+    // A tombstone rather than a removal: without it, a browser that still holds
+    // the task would put it back the next time a backup was merged.
     setTasks((currentTasks) =>
-      currentTasks.filter((currentTask) => currentTask.id !== task.id),
+      currentTasks.map((currentTask) =>
+        currentTask.id === task.id ? tombstone(currentTask) : currentTask,
+      ),
     );
     setStatusMessage(`Deleted ${task.title}.`);
   };
@@ -280,13 +337,17 @@ function App() {
 
   const updateTag = (tagId: string, values: TagValues) => {
     setTags((currentTags) =>
-      currentTags.map((tag) => (tag.id === tagId ? { ...tag, ...values } : tag)),
+      currentTags.map((tag) => (tag.id === tagId ? touchTag(tag, values) : tag)),
     );
     setStatusMessage(`Updated the tag ${values.name}.`);
   };
 
   const deleteTag = (tag: Tag) => {
-    setTags((currentTags) => currentTags.filter(({ id }) => id !== tag.id));
+    setTags((currentTags) =>
+      currentTags.map((currentTag) =>
+        currentTag.id === tag.id ? tombstone(currentTag) : currentTag,
+      ),
+    );
     // The tag disappears from the tasks that carried it, the draft task being
     // typed, the filter, and the page that was showing it.
     setTasks((currentTasks) => removeTagFromTasks(currentTasks, tag.id));
@@ -306,9 +367,68 @@ function App() {
     );
   };
 
+  /** The grid redraws around the reader, so the new range is announced too. */
+  const selectCalendarScope = (scope: CalendarScope) => {
+    setCalendarScope(scope);
+    setStatusMessage(
+      scope === "week"
+        ? "Calendar showing one week."
+        : "Calendar showing the whole month.",
+    );
+  };
+
+  const backupContents: BackupContents = {
+    tasks,
+    tags,
+    pomodoro: { settings: pomodoro.settings, history: pomodoro.history },
+  };
+
+  const importBackup = (mode: ImportMode, incoming: BackupContents) => {
+    const merged = applyImport(mode, backupContents, incoming);
+
+    setTasks(merged.tasks);
+    setTags(merged.tags);
+    pomodoro.restoreState(merged.pomodoro.settings, merged.pomodoro.history);
+
+    // A replace, or a merge that brought in a deletion, can take away the tag
+    // the filter, the draft task or the open page was pointing at.
+    const survivingTagIds = new Set(
+      merged.tags.filter(isPresent).map((tag) => tag.id),
+    );
+    setTagFilter((current) => current.filter((id) => survivingTagIds.has(id)));
+    setDraftTagIds((current) => current.filter((id) => survivingTagIds.has(id)));
+    setOpenTagId((current) =>
+      current && survivingTagIds.has(current) ? current : null,
+    );
+
+    const summary = summarizeBackup(merged);
+    const description = `${summary.openTasks} open ${
+      summary.openTasks === 1 ? "task" : "tasks"
+    }, ${summary.tags} ${summary.tags === 1 ? "tag" : "tags"}.`;
+
+    setStatusMessage(
+      mode === "replace"
+        ? `Replaced your data with the backup. ${description}`
+        : `Merged the backup into your data. ${description}`,
+    );
+    toast.success(mode === "replace" ? "Backup restored" : "Backup merged", {
+      description,
+    });
+  };
+
   const selectTheme = (next: ThemePreference) => {
     setTheme(next);
     setStatusMessage(THEME_ANNOUNCEMENTS[next]);
+  };
+
+  const selectAccent = (accent: AccentId) => {
+    appearance.setAccent(accent);
+    setStatusMessage(`Accent colour set to ${accentLabel(accent)}.`);
+  };
+
+  const selectZoom = (zoom: ZoomLevel) => {
+    appearance.setZoom(zoom);
+    setStatusMessage(`Display size set to ${zoom} percent.`);
   };
 
   const openTagPage = (tagId: string) => {
@@ -327,12 +447,49 @@ function App() {
         onSelect={selectView}
         theme={theme}
         onThemeChange={selectTheme}
+        footerActions={(collapsed) => (
+          <>
+            <BackupDialog
+              contents={backupContents}
+              onImport={importBackup}
+              trigger={
+                <SidebarFooterButton
+                  icon={DatabaseBackup}
+                  label="Backup"
+                  collapsed={collapsed}
+                />
+              }
+            />
+            <SettingsDialog
+              theme={theme}
+              onThemeChange={selectTheme}
+              accent={appearance.accent}
+              onAccentChange={selectAccent}
+              zoom={appearance.zoom}
+              onZoomChange={selectZoom}
+              trigger={
+                <SidebarFooterButton
+                  icon={Settings}
+                  label="Settings"
+                  collapsed={collapsed}
+                />
+              }
+            />
+          </>
+        )}
         menuOpen={menuOpen}
         onMenuOpenChange={setMenuOpen}
       />
 
       <main className="min-w-0 flex-1 overflow-x-hidden">
-        <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        <div
+          className={cn(
+            "mx-auto w-full px-4 py-8 sm:px-6 sm:py-12",
+            // Seven columns of days need more room than a single column of task
+            // rows, so the calendar is the one page that reads wider.
+            view === "calendar" ? "max-w-5xl" : "max-w-3xl",
+          )}
+        >
           <div className="mb-8 sm:mb-10">
             {openTag ? (
               <Button
@@ -428,7 +585,7 @@ function App() {
                     }
                   />
                   <TagPickerDialog
-                    tags={tags}
+                    tags={presentTags}
                     value={draftTagIds}
                     onValueChange={setDraftTagIds}
                     onCreateTag={addTag}
@@ -445,7 +602,7 @@ function App() {
               <section className="mt-8" aria-labelledby="tasks-heading">
                 <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                   <TagFilterMenu
-                    tags={tags}
+                    tags={presentTags}
                     selected={tagFilter}
                     onSelectedChange={setTagFilter}
                     counts={tagCounts}
@@ -468,7 +625,7 @@ function App() {
                 </div>
                 <TaskList
                   tasks={visibleTasks}
-                  tags={tags}
+                  tags={presentTags}
                   tagsById={tagsById}
                   label="Task list"
                   empty={
@@ -506,6 +663,19 @@ function App() {
                 />
               </section>
             </>
+          ) : view === "calendar" ? (
+            <CalendarPage
+              tasks={activeTasks}
+              tags={presentTags}
+              tagsById={tagsById}
+              scope={calendarScope}
+              onScopeChange={selectCalendarScope}
+              onAddTask={addTask}
+              onCompleteTask={completeTask}
+              onSaveTask={(task, changes) => updateTask(task.id, changes)}
+              onDeleteTask={deleteTask}
+              onCreateTag={addTag}
+            />
           ) : view === "pomodoro" ? (
             <PomodoroPage
               controller={pomodoro}
@@ -517,8 +687,8 @@ function App() {
             openTag ? (
               <TagDetailPage
                 tag={openTag}
-                tags={tags}
-                tasks={tasks}
+                tags={presentTags}
+                tasks={presentTasks}
                 tagsById={tagsById}
                 counts={tagCounts}
                 onUpdateTag={updateTag}
@@ -530,7 +700,7 @@ function App() {
               />
             ) : (
               <TagsPage
-                tags={tags}
+                tags={presentTags}
                 counts={tagCounts}
                 onOpenTag={openTagPage}
                 onCreateTag={addTag}

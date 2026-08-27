@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ListTodo,
   Monitor,
@@ -15,7 +16,11 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { nextTheme, type ThemePreference } from "@/lib/theme";
+import {
+  SegmentedControl,
+  type SegmentedOption,
+} from "@/components/ui/segmented-control";
+import { nextTheme, THEME_PREFERENCES, type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "marzano.sidebar.v1";
@@ -48,13 +53,48 @@ function saveCollapsed(collapsed: boolean) {
 }
 
 const FOOTER_BUTTON =
-  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70";
 
 const THEME_LABELS: Record<ThemePreference, { label: string; icon: LucideIcon }> = {
-  system: { label: "System theme", icon: Monitor },
-  light: { label: "Light theme", icon: Sun },
-  dark: { label: "Dark theme", icon: Moon },
+  system: { label: "System", icon: Monitor },
+  light: { label: "Light", icon: Sun },
+  dark: { label: "Dark", icon: Moon },
 };
+
+// Declared in preference order, so the row reads the way the cycle steps.
+const THEME_OPTIONS: SegmentedOption<ThemePreference>[] = THEME_PREFERENCES.map(
+  (id) => ({ id, ...THEME_LABELS[id] }),
+);
+
+interface SidebarFooterButtonProps extends ComponentProps<"button"> {
+  icon: LucideIcon;
+  label: string;
+  collapsed: boolean;
+}
+
+/**
+ * The footer's button shape, exported so a control the sidebar does not own --
+ * a dialog trigger from `App` -- still sits flush with the ones it does.
+ */
+function SidebarFooterButton({
+  icon: Icon,
+  label,
+  collapsed,
+  className,
+  ...props
+}: SidebarFooterButtonProps) {
+  return (
+    <button
+      type="button"
+      title={label}
+      className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0", className)}
+      {...props}
+    >
+      <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
+      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>{label}</span>
+    </button>
+  );
+}
 
 interface SidebarThemeToggleProps {
   theme: ThemePreference;
@@ -63,29 +103,79 @@ interface SidebarThemeToggleProps {
 }
 
 /**
- * One button rather than three: the choice is a preference people set once,
- * and cycling keeps it legible at the collapsed width, where a segmented
- * control would not fit.
+ * Collapsed, the rail is 44px wide and cycling is the only shape that fits, so
+ * the icon has to carry the whole state: it swaps with a quarter turn, which
+ * says the press landed and which way the choice moved. Without it the button
+ * changes glyph between frames and reads as a redraw rather than an answer.
+ */
+function CyclingThemeButton({
+  theme,
+  onThemeChange,
+}: Omit<SidebarThemeToggleProps, "collapsed">) {
+  const reduceMotion = useReducedMotion();
+  const { label, icon: Icon } = THEME_LABELS[theme];
+  const upcoming = THEME_LABELS[nextTheme(theme)].label.toLowerCase();
+  const description = `Theme: ${label.toLowerCase()}. Switch to ${upcoming}`;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onThemeChange(nextTheme(theme))}
+      aria-label={description}
+      title={description}
+      className={cn(FOOTER_BUTTON, "w-11 justify-center px-0")}
+    >
+      <span className="relative flex size-[1.125rem] shrink-0 items-center justify-center">
+        <AnimatePresence initial={false}>
+          <motion.span
+            key={theme}
+            aria-hidden="true"
+            className="absolute inset-0"
+            initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
+            animate={{ opacity: 1, rotate: 0, scale: 1 }}
+            exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 520, damping: 34 }
+            }
+          >
+            <Icon className="size-[1.125rem]" />
+          </motion.span>
+        </AnimatePresence>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Two shapes for one setting. Wide enough for three segments, all of the
+ * options are on screen and any of them is one press away -- and the current
+ * one is visible without reading it off a single icon. It takes the raised
+ * variant rather than the settings dialog's filled one: the footer carries this
+ * control on every screen, and a block of accent down there would outweigh the
+ * view the sidebar is actually for. Collapsed, the rail is too narrow for three
+ * segments and the button cycles instead.
  */
 function SidebarThemeToggle({
   theme,
   onThemeChange,
   collapsed,
 }: SidebarThemeToggleProps) {
-  const { label, icon: Icon } = THEME_LABELS[theme];
-  const upcoming = THEME_LABELS[nextTheme(theme)].label.toLowerCase();
+  if (collapsed) {
+    return <CyclingThemeButton theme={theme} onThemeChange={onThemeChange} />;
+  }
 
   return (
-    <button
-      type="button"
-      onClick={() => onThemeChange(nextTheme(theme))}
-      aria-label={`${label}. Switch to ${upcoming}`}
-      title={`${label}. Switch to ${upcoming}`}
-      className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0")}
-    >
-      <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
-      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>{label}</span>
-    </button>
+    <SegmentedControl
+      aria-label="Theme"
+      options={THEME_OPTIONS}
+      value={theme}
+      onValueChange={onThemeChange}
+      stretch
+      iconOnly
+      variant="raised"
+    />
   );
 }
 
@@ -137,7 +227,7 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
             aria-current={active ? "page" : undefined}
             title={collapsed ? item.label : undefined}
             className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium ring-offset-background transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150 ease-out outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
               collapsed && "w-11 flex-col justify-center gap-0.5 px-0",
               active
                 ? "bg-secondary text-foreground"
@@ -174,6 +264,11 @@ interface AppSidebarProps {
   onSelect: (id: string) => void;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  /**
+   * Rendered above the theme toggle. A function rather than a node because only
+   * the sidebar knows whether it is collapsed, and the controls have to match.
+   */
+  footerActions?: (collapsed: boolean) => ReactNode;
   /** The drawer state for narrow screens, where the sidebar cannot stay docked. */
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
@@ -185,6 +280,7 @@ function AppSidebar({
   onSelect,
   theme,
   onThemeChange,
+  footerActions,
   menuOpen,
   onMenuOpenChange,
 }: AppSidebarProps) {
@@ -222,6 +318,7 @@ function AppSidebar({
             collapsed && "items-center px-2",
           )}
         >
+          {footerActions?.(collapsed)}
           <SidebarThemeToggle
             theme={theme}
             onThemeChange={onThemeChange}
@@ -269,7 +366,8 @@ function AppSidebar({
               onMenuOpenChange(false);
             }}
           />
-          <div className="shrink-0 border-t border-border p-3">
+          <div className="flex shrink-0 flex-col gap-1 border-t border-border p-3">
+            {footerActions?.(false)}
             <SidebarThemeToggle
               theme={theme}
               onThemeChange={onThemeChange}
@@ -282,4 +380,4 @@ function AppSidebar({
   );
 }
 
-export { AppSidebar };
+export { AppSidebar, SidebarFooterButton };

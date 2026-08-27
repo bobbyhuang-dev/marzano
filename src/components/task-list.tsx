@@ -1,10 +1,14 @@
-import { BellRing, CalendarClock, CalendarOff } from "lucide-react";
+import { BellRing, CalendarClock, CalendarOff, PencilLine } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
-import { EditTaskDialog, type TaskChanges } from "@/components/edit-task-dialog";
+import {
+  TaskFormDialog,
+  type TaskChanges,
+} from "@/components/task-form-dialog";
 import { TagChipList } from "@/components/tag-chip";
 import { type TagValues } from "@/components/tag-form-dialog";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDueDate, isTaskDue, type Task } from "@/lib/tasks";
 import { resolveTags, type Tag } from "@/lib/tags";
@@ -77,11 +81,21 @@ function TaskItem({
       {/* The checkbox tracks the title's first line, but the actions belong to
           the row as a whole, so they centre against its full height. */}
       <div className="flex shrink-0 items-center gap-0.5 self-center">
-        <EditTaskDialog
+        <TaskFormDialog
           task={task}
           tags={tags}
-          onSave={onSave}
+          onSubmit={onSave}
           onCreateTag={onCreateTag}
+          trigger={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit ${task.title}`}
+              title="Edit task"
+            >
+              <PencilLine aria-hidden="true" />
+            </Button>
+          }
         />
         <DeleteTaskDialog task={task} onDelete={onDelete} />
       </div>

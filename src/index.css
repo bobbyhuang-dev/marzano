@@ -188,6 +188,116 @@
     --elevation-swatch: inset 0 0 0 1px rgb(255 255 255 / 0.16);
   }
 
+  /*
+   * The accent, set by lib/appearance.ts (and by the pre-paint script in
+   * index.html) as `data-accent` on the root. Each one restates the three
+   * tokens the brand colour actually reaches -- the primary surface, the text
+   * that sits on it, and the focus ring -- and leaves the neutral greys the
+   * rest of the app is built from alone. `graphite` is the palette above, so
+   * it needs no block of its own.
+   *
+   * The swatch that previews an accent in Settings redefines `--primary`
+   * locally instead of hard-coding a colour, which is why each rule is shared
+   * between the root and `[data-swatch]`: one place per accent, per theme.
+   */
+  :root:not(.dark)[data-accent="blue"],
+  [data-swatch="blue"] {
+    --primary: 221 78% 46%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 221 78% 40%;
+  }
+
+  :root.dark[data-accent="blue"],
+  .dark [data-swatch="blue"] {
+    --primary: 213 90% 66%;
+    --primary-foreground: 222 45% 12%;
+    --ring: 213 90% 72%;
+  }
+
+  :root:not(.dark)[data-accent="violet"],
+  [data-swatch="violet"] {
+    --primary: 263 60% 50%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 263 60% 44%;
+  }
+
+  :root.dark[data-accent="violet"],
+  .dark [data-swatch="violet"] {
+    --primary: 258 88% 74%;
+    --primary-foreground: 260 40% 13%;
+    --ring: 258 88% 80%;
+  }
+
+  :root:not(.dark)[data-accent="teal"],
+  [data-swatch="teal"] {
+    --primary: 185 84% 27%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 185 84% 22%;
+  }
+
+  :root.dark[data-accent="teal"],
+  .dark [data-swatch="teal"] {
+    --primary: 175 68% 55%;
+    --primary-foreground: 186 60% 10%;
+    --ring: 175 68% 62%;
+  }
+
+  :root:not(.dark)[data-accent="green"],
+  [data-swatch="green"] {
+    --primary: 145 63% 28%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 145 63% 23%;
+  }
+
+  :root.dark[data-accent="green"],
+  .dark [data-swatch="green"] {
+    --primary: 145 58% 58%;
+    --primary-foreground: 145 55% 10%;
+    --ring: 145 58% 65%;
+  }
+
+  :root:not(.dark)[data-accent="amber"],
+  [data-swatch="amber"] {
+    --primary: 32 90% 36%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 32 90% 30%;
+  }
+
+  :root.dark[data-accent="amber"],
+  .dark [data-swatch="amber"] {
+    --primary: 38 92% 62%;
+    --primary-foreground: 32 60% 12%;
+    --ring: 38 92% 68%;
+  }
+
+  :root:not(.dark)[data-accent="rose"],
+  [data-swatch="rose"] {
+    --primary: 345 72% 44%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 345 72% 38%;
+  }
+
+  :root.dark[data-accent="rose"],
+  .dark [data-swatch="rose"] {
+    --primary: 349 88% 70%;
+    --primary-foreground: 345 50% 12%;
+    --ring: 349 88% 76%;
+  }
+
+  /* Graphite has no root block, but its swatch still has to show graphite
+     while another accent is the one in force. */
+  [data-swatch="graphite"] {
+    --primary: 0 0% 8%;
+  }
+
+  .dark [data-swatch="graphite"] {
+    --primary: 0 0% 96%;
+  }
+
+  [data-swatch] {
+    background-color: hsl(var(--primary));
+  }
+
   * {
     @apply border-border;
   }
@@ -202,7 +312,10 @@
   }
 
   body {
-    @apply min-w-80 bg-background font-sans text-foreground antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
+    /* In pixels, not rem: the floor is the narrowest phone, and it must not
+       climb when the display size does. */
+    min-width: 320px;
     min-height: 100dvh;
     font-family:
       "Geist Variable",
@@ -230,7 +343,9 @@
   }
 
   input {
-    font-size: 16px;
+    /* 16px is the floor iOS zooms the page below; above it the field grows
+       with the display size like everything else. */
+    font-size: max(16px, 1rem);
   }
 
   input[type="time"] {

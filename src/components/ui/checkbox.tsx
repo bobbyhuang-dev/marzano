@@ -23,7 +23,7 @@ function CheckboxIndicator({
   return (
     <span
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,transform] duration-150 ease-out group-active:scale-90",
+        "flex size-5 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out group-active:scale-90",
         checked
           ? "border-primary bg-primary text-primary-foreground"
           : "border-input bg-transparent group-hover:border-foreground/45",
@@ -55,12 +55,17 @@ const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "group inline-flex size-11 shrink-0 items-center justify-center rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "group inline-flex size-11 shrink-0 items-center justify-center rounded-full outline-none disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       {...props}
     >
-      <CheckboxIndicator checked={checked} />
+      {/* The hit area is 2.75rem of mostly empty space, so the ring lands on
+          the mark itself rather than floating a halo around nothing. */}
+      <CheckboxIndicator
+        checked={checked}
+        className="group-focus-visible:ring-[3px] group-focus-visible:ring-ring/70"
+      />
     </button>
   ),
 );

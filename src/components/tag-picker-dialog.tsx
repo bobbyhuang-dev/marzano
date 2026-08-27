@@ -228,7 +228,7 @@ function TagPickerDialog({
                           role="checkbox"
                           aria-checked={checked}
                           onClick={() => toggle(tag.id)}
-                          className="group flex min-h-11 w-full items-center gap-3 px-5 py-2.5 text-left ring-inset ring-offset-background transition-colors duration-150 ease-out hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-[420px]:px-6"
+                          className="group flex min-h-11 w-full items-center gap-3 px-5 py-2.5 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/50 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70 min-[420px]:px-6"
                         >
                           <CheckboxIndicator checked={checked} />
                           <TagChip tag={tag} size="md" className="max-w-full" />

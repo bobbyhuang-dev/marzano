@@ -7,7 +7,12 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-import { dueAtToDeadline, formatDueDate, type Task } from "@/lib/tasks";
+import {
+  dueAtToDeadline,
+  formatDueDate,
+  touchTask,
+  type Task,
+} from "@/lib/tasks";
 
 const MAX_TIMER_DELAY = 2_147_000_000;
 
@@ -60,7 +65,7 @@ export function useDueReminders(
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
         remindedIds.has(task.id) && !task.remindedAt
-          ? { ...task, remindedAt }
+          ? touchTask(task, { remindedAt })
           : task,
       ),
     );

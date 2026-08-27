@@ -29,6 +29,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  DurationPicker,
+  type DurationValue,
+} from "@/components/ui/duration-picker";
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -71,10 +75,15 @@ const STATUS_LABELS: Record<PomodoroStatus, string> = {
   paused: "paused",
 };
 
-const FOCUS_OPTIONS = [15, 20, 25, 30, 40, 45, 50, 60, 90];
-const SHORT_BREAK_OPTIONS = [3, 5, 10, 15, 20];
-const LONG_BREAK_OPTIONS = [10, 15, 20, 25, 30, 45];
 const INTERVAL_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
+
+/**
+ * `use-pomodoro` clamps every phase to two hours, but the picker bounds hours
+ * and minutes separately, so allowing 2 would let 2 hr 30 be typed and then
+ * silently stored as 2 hr. One hour caps the control at 1 hr 59 instead, which
+ * the clamp never touches — the field always shows what the timer will run.
+ */
+const MAX_DURATION_HOURS = 1;
 
 /** How many finished sessions the activity list shows before it stops. */
 const RECENT_SESSION_COUNT = 5;
@@ -249,7 +258,7 @@ function TaskPickerDialog({
                       onOpenChange(false);
                     }}
                     className={cn(
-                      "flex min-h-16 w-full items-start gap-3 rounded-md px-3 py-3 text-left ring-offset-background transition-colors duration-150 ease-out hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "flex min-h-16 w-full items-start gap-3 rounded-md px-3 py-3 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
                       selected && "bg-secondary hover:bg-secondary",
                     )}
                   >
@@ -354,33 +363,41 @@ function SettingsSection({
   );
 }
 
+const toDurationValue = (minutes: number): DurationValue => ({
+  hours: Math.floor(minutes / 60),
+  minutes: minutes % 60,
+});
+
 function DurationField({
-  id,
   label,
   value,
-  options,
-  max,
   onChange,
 }: {
-  id: string;
   label: string;
   value: number;
-  options: number[];
-  max: number;
   onChange: (value: number) => void;
 }) {
+  const labelId = useId();
+
   return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <NumberCombobox
-        id={id}
-        value={value}
-        options={options}
-        min={1}
-        max={max}
-        formatValue={(minutes) => `${minutes} min`}
-        onValueChange={onChange}
-        aria-label={`${label} in minutes`}
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <p id={labelId} className="text-sm font-medium text-foreground">
+        {label}
+      </p>
+      {/*
+        Uncontrolled on purpose: the picker holds its own half-typed text, and
+        feeding the clamped setting back would rewrite a field the moment it is
+        cleared. The dialog unmounts on close, so it re-reads on every open.
+      */}
+      <DurationPicker
+        defaultValue={toDurationValue(value)}
+        maxHours={MAX_DURATION_HOURS}
+        hoursLabel="hr"
+        minutesLabel="min"
+        hoursAriaLabel={`${label} hours`}
+        minutesAriaLabel={`${label} minutes`}
+        aria-labelledby={labelId}
+        onChange={(duration) => onChange(duration.hours * 60 + duration.minutes)}
       />
     </div>
   );
@@ -393,9 +410,6 @@ function PomodoroSettingsDialog({
   controller: PomodoroController;
 }) {
   const { settings, updateSettings, requestNotificationPermission } = controller;
-  const focusId = useId();
-  const shortBreakId = useId();
-  const longBreakId = useId();
   const intervalId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [permission, setPermission] = useState<
@@ -457,39 +471,31 @@ function PomodoroSettingsDialog({
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
           <SettingsSection title="Durations">
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="mt-3 space-y-4">
               <DurationField
-                id={focusId}
                 label="Focus"
                 value={settings.focusMinutes}
-                options={FOCUS_OPTIONS}
-                max={120}
                 onChange={(focusMinutes) => updateSettings({ focusMinutes })}
               />
               <DurationField
-                id={shortBreakId}
                 label="Short break"
                 value={settings.shortBreakMinutes}
-                options={SHORT_BREAK_OPTIONS}
-                max={120}
                 onChange={(shortBreakMinutes) =>
                   updateSettings({ shortBreakMinutes })
                 }
               />
               <DurationField
-                id={longBreakId}
                 label="Long break"
                 value={settings.longBreakMinutes}
-                options={LONG_BREAK_OPTIONS}
-                max={120}
                 onChange={(longBreakMinutes) =>
                   updateSettings({ longBreakMinutes })
                 }
               />
-              <div className="grid gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
                 <Label htmlFor={intervalId}>Long break after</Label>
                 <NumberCombobox
                   id={intervalId}
+                  className="w-36"
                   value={settings.longBreakInterval}
                   options={INTERVAL_OPTIONS}
                   min={2}

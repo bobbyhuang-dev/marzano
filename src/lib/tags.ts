@@ -1,8 +1,22 @@
-export interface Tag {
+import {
+  isPresent,
+  nowIso,
+  purgeTombstones,
+  type SyncMeta,
+  toSyncMeta,
+  touch,
+} from "@/lib/sync";
+
+export interface Tag extends SyncMeta {
   id: string;
   name: string;
   /** A hex colour, normally one of `TAG_COLORS`. Unknown values still render. */
   color: string;
+}
+
+/** Applies a change to a tag and stamps it for the next merge. */
+export function touchTag(tag: Tag, changes: Partial<Tag>): Tag {
+  return touch(tag, changes);
 }
 
 export interface TagColor {
@@ -62,7 +76,7 @@ function isHexColor(value: unknown): value is string {
 }
 
 /** Reads one stored record; anything without a usable name or colour is dropped. */
-function toTag(value: unknown): Tag | null {
+export function toTag(value: unknown): Tag | null {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as Partial<Tag>;
@@ -70,6 +84,7 @@ function toTag(value: unknown): Tag | null {
   if (typeof candidate.name !== "string" || !candidate.name.trim()) return null;
 
   return {
+    ...toSyncMeta(candidate),
     id: candidate.id,
     name: candidate.name.slice(0, MAX_TAG_NAME_LENGTH),
     color: isHexColor(candidate.color)
@@ -86,7 +101,9 @@ export function loadTags(): Tag[] {
     const parsed: unknown = JSON.parse(stored);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.map(toTag).filter((tag): tag is Tag => tag !== null);
+    return purgeTombstones(
+      parsed.map(toTag).filter((tag): tag is Tag => tag !== null),
+    );
   } catch {
     return [];
   }
@@ -105,6 +122,8 @@ export function createTag(name: string, color: string): Tag {
     id: crypto.randomUUID(),
     name: name.trim().slice(0, MAX_TAG_NAME_LENGTH),
     color,
+    updatedAt: nowIso(),
+    deletedAt: null,
   };
 }
 
@@ -113,8 +132,9 @@ export function byTagName(a: Tag, b: Tag): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 }
 
+/** Tombstones are skipped: a deleted tag is not a tag anything can resolve to. */
 export function tagsById(tags: Tag[]): Map<string, Tag> {
-  return new Map(tags.map((tag) => [tag.id, tag]));
+  return new Map(tags.filter(isPresent).map((tag) => [tag.id, tag]));
 }
 
 /** The tags a task carries, in display order; ids of deleted tags are skipped. */
@@ -137,7 +157,9 @@ export function tagColorName(hex: string): string {
  * user having to think about it. Once every colour is taken, it cycles.
  */
 export function suggestTagColor(tags: Tag[]): string {
-  const taken = new Set(tags.map((tag) => tag.color.toLowerCase()));
+  const taken = new Set(
+    tags.filter(isPresent).map((tag) => tag.color.toLowerCase()),
+  );
   const free = TAG_COLORS.find((color) => !taken.has(color.hex));
 
   return (free ?? TAG_COLORS[tags.length % TAG_COLORS.length]).hex;
@@ -151,7 +173,10 @@ export function isTagNameTaken(
   const candidate = name.trim().toLowerCase();
 
   return tags.some(
-    (tag) => tag.id !== exceptId && tag.name.trim().toLowerCase() === candidate,
+    (tag) =>
+      tag.id !== exceptId &&
+      isPresent(tag) &&
+      tag.name.trim().toLowerCase() === candidate,
   );
 }
 

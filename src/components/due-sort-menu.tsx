@@ -84,7 +84,7 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-haspopup="true"
-        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-medium text-muted-foreground shadow-sm ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-normal text-muted-foreground shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
         <ActiveIcon aria-hidden="true" className="size-4 shrink-0" />
         <span className="truncate">{active.label}</span>
@@ -121,7 +121,7 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
                     role="radio"
                     aria-checked={checked}
                     onClick={() => select(option.id)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm ring-inset ring-offset-background transition-colors duration-150 ease-out hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
                   >
                     <OptionIcon
                       aria-hidden="true"

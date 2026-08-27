@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 
 import {
+  createInitialTimer,
   loadPomodoroHistory,
   loadPomodoroSettings,
   loadPomodoroTimer,
@@ -56,6 +57,10 @@ export interface PomodoroController {
   skip: () => void;
   detachCompletedTask: (taskId: string) => void;
   clearHistory: () => void;
+  restoreState: (
+    settings: PomodoroSettings,
+    history: PomodoroSessionRecord[],
+  ) => void;
   requestNotificationPermission: () => Promise<
     NotificationPermission | "unsupported"
   >;
@@ -776,6 +781,30 @@ export function usePomodoro(
 
   const clearHistory = useCallback(() => setHistory([]), []);
 
+  /**
+   * Adopts the settings and history from an imported backup. The timer starts
+   * over rather than carrying on: the restored settings change the phase
+   * lengths underneath it, and a round measured against the old ones is not a
+   * round the new ones would recognise.
+   */
+  const restoreState = useCallback(
+    (
+      nextSettings: PomodoroSettings,
+      nextHistory: PomodoroSessionRecord[],
+    ) => {
+      const normalized = normalizeSettings(nextSettings);
+      settingsRef.current = normalized;
+      setSettings(normalized);
+
+      processedSessionsRef.current = new Set(
+        nextHistory.map((record) => record.id),
+      );
+      setHistory(nextHistory);
+      applyTimer(createInitialTimer(normalized));
+    },
+    [applyTimer],
+  );
+
   const requestNotificationPermission = useCallback(async () => {
     if (typeof Notification === "undefined") return "unsupported" as const;
     if (Notification.permission !== "default") return Notification.permission;
@@ -808,6 +837,7 @@ export function usePomodoro(
     skip,
     detachCompletedTask,
     clearHistory,
+    restoreState,
     requestNotificationPermission,
   };
 }

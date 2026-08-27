@@ -19,7 +19,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       data-state={checked ? "checked" : "unchecked"}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "group inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full outline-none disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       {...props}
@@ -27,7 +27,9 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       <span
         aria-hidden="true"
         className={cn(
-          "flex h-6 w-11 items-center rounded-full p-0.5 transition-colors duration-200 ease-out",
+          // Same reason as the checkbox: the ring belongs on the track, not on the
+          // invisible 2.75rem target around it.
+          "flex h-6 w-11 items-center rounded-full p-0.5 transition-[background-color,box-shadow] duration-200 ease-out group-focus-visible:ring-[3px] group-focus-visible:ring-ring/70",
           checked ? "bg-primary" : "bg-input",
         )}
       >

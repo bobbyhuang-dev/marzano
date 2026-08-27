@@ -66,7 +66,7 @@ function TagFilterMenu({
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-haspopup="true"
-        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-medium text-muted-foreground shadow-sm ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-normal text-muted-foreground shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
         <Tags aria-hidden="true" className="size-4 shrink-0" />
         {active.length > 0 ? (
@@ -146,7 +146,7 @@ function TagFilterMenu({
                   <button
                     type="button"
                     onClick={() => onSelectedChange([])}
-                    className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground ring-offset-background transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
                   >
                     Clear
                   </button>
@@ -164,7 +164,7 @@ function TagFilterMenu({
                         role="checkbox"
                         aria-checked={checked}
                         onClick={() => toggle(tag.id)}
-                        className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm ring-inset ring-offset-background transition-colors duration-150 ease-out hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
                       >
                         <TagSwatch color={tag.color} className="size-3.5" />
                         <span
