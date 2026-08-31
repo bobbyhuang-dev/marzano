@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/clean-sites-build.mjs && tsc -b && vite build && node scripts/prepare-sites-build.mjs",
+    "build": "tsc -b && vite build",
     "deploy": "pnpm build && wrangler deploy",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@openai/sites-vite-plugin": "^0.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/flubber": "^0.4.0",
     "@types/node": "^26.2.0",

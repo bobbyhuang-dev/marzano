@@ -31,12 +31,24 @@ pnpm dev
 The dev server prints a local URL. Other scripts:
 
 ```bash
-pnpm build     # type-check and bundle to dist/
+pnpm build     # type-check and bundle to dist/client/
 pnpm preview   # serve the production build locally
 pnpm lint      # run ESLint
 ```
 
-`pnpm build` produces a static `dist/` directory that can be served from any static host.
+`pnpm build` produces a static `dist/client/` directory that can be served from any static host.
+
+## Deployment
+
+Production is hosted on Cloudflare Workers at
+[`marzano.bobbyhuang.dev`](https://marzano.bobbyhuang.dev). Pushing to `main`
+runs the GitHub Actions deployment workflow, which validates the app and
+publishes the new build. The workflow requires the repository secrets
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
+Marzano data stays in each browser's `localStorage`; deployments do not modify
+it. When moving between different hostnames, export a JSON backup from the old
+site and merge it into the new site before retiring the old hostname.
 
 ## Your data
 
