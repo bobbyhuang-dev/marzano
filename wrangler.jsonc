@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "marzano",
+  "compatibility_date": "2026-08-31",
+  "routes": [
+    {
+      "pattern": "marzano.bobbyhuang.dev",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application"
+  }
+}

@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/clean-sites-build.mjs && tsc -b && vite build && node scripts/prepare-sites-build.mjs",
+    "deploy": "pnpm build && wrangler deploy",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -48,6 +49,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.67.0",
-    "vite": "^8.2.1"
+    "vite": "^8.2.1",
+    "wrangler": "^4.127.1"
   }
 }
