@@ -1,7 +1,6 @@
 import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  ListTodo,
   Monitor,
   Moon,
   PanelLeft,
@@ -10,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import {
   Sheet,
   SheetContent,
@@ -203,9 +203,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         collapsed && "justify-center px-0",
       )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[0.625rem] bg-primary text-primary-foreground">
-        <ListTodo className="size-5" aria-hidden="true" />
-      </span>
+      <BrandMark className="size-8 text-primary" />
       {collapsed ? null : (
         <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
           Marzano

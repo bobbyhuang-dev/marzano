@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "deploy": "pnpm build && wrangler deploy",
+    "icons": "node scripts/render-icons.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -45,6 +46,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "sharp": "^0.35.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.67.0",

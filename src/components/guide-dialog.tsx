@@ -8,12 +8,12 @@ import {
   ExternalLink,
   ListTodo,
   ShieldCheck,
-  Sparkles,
   Tags as TagsIcon,
   Timer,
   type LucideIcon,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { REPOSITORY_URL } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,8 @@ import { cn } from "@/lib/utils";
 
 interface GuideStep {
   id: string;
-  icon: LucideIcon;
+  /** The card's glyph. The welcome card has none: it shows the mark itself. */
+  icon?: LucideIcon;
   title: string;
   /** One line on what the step is, before the three things it can do. */
   summary: string;
@@ -43,7 +44,6 @@ interface GuideStep {
 const GUIDE_STEPS: GuideStep[] = [
   {
     id: "welcome",
-    icon: Sparkles,
     title: "Welcome to Marzano",
     summary:
       "A focused task list with due reminders, tags and a Pomodoro timer — and nothing else.",
@@ -131,11 +131,16 @@ function StepCard({ step }: { step: GuideStep }) {
 
   return (
     <div className="grid gap-4">
-      {/* The brand mark's shape and colour rather than the muted medallion the
-          empty states use: this is the app introducing itself, not a status. */}
-      <span className="flex size-11 items-center justify-center rounded-[0.625rem] bg-primary text-primary-foreground">
-        <Icon className="size-5" aria-hidden="true" />
-      </span>
+      {/* The welcome card is the mark itself; the rest keep a tile in its
+          colour rather than the muted medallion the empty states use, because
+          this is still the app introducing itself, not a status. */}
+      {Icon ? (
+        <span className="flex size-11 items-center justify-center rounded-[0.625rem] bg-primary text-primary-foreground">
+          <Icon className="size-5" aria-hidden="true" />
+        </span>
+      ) : (
+        <BrandMark className="size-10 text-primary" />
+      )}
       <div className="grid gap-1.5">
         <h3 className="text-base font-semibold tracking-[-0.01em] text-foreground">
           {step.title}

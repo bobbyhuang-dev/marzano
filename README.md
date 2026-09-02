@@ -1,4 +1,4 @@
-# Marzano
+# <img src="public/favicon.svg" alt="" width="30" height="30"> Marzano
 
 A focused task list with due reminders, tags, and a built-in Pomodoro timer. Everything runs in the browser and is stored on your device — no account, no server, no network calls.
 

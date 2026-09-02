@@ -7,6 +7,16 @@
     <meta name="description" content="A focused task list with due reminders, tags, and a built-in Pomodoro timer." />
     <title>Marzano</title>
     <!--
+      All rendered from src/lib/brand.ts by `pnpm icons`. The SVG follows the
+      colour scheme and is what Chrome and Firefox show; the ICO declares a size
+      so that Chrome ranks it below the SVG instead of taking it first, and is
+      what Safari and older browsers fall back to.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!--
       The theme has to be on the document before the first paint, or a dark-mode
       reader gets a white flash on every load; the accent and the display size
       are here for the same reason, or the page lays itself out twice. Mirrors

@@ -28,6 +28,7 @@ export const RELEASES: Release[] = [
       "The sort option that keeps your own order is now called Manual order, since that is what it does.",
       "A first run opens a short guide to what Marzano is and where your data lives. It stays in the sidebar under Guide.",
       "What's new tells you when Marzano has changed since your last visit, and keeps the history here. The notice can be turned off below or in Settings.",
+      "Marzano has an icon: a tomato wearing a check, in the browser tab and at the top of the sidebar. A San Marzano is a tomato, and the timer is a pomodoro.",
     ],
   },
   {
