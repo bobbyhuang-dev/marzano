@@ -35,20 +35,22 @@ function ReleaseEntry({ release, fresh }: { release: Release; fresh: boolean }) 
           {release.title}
         </h3>
       </div>
-      <ul className="grid gap-2">
-        {release.notes.map((note) => (
-          <li
-            key={note}
-            className="flex items-start gap-2.5 text-sm leading-relaxed text-foreground"
-          >
-            <span
-              aria-hidden="true"
-              className="mt-[0.5625rem] size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
-            />
-            <span>{note}</span>
-          </li>
-        ))}
-      </ul>
+      {release.notes.length > 0 ? (
+        <ul className="grid gap-2">
+          {release.notes.map((note) => (
+            <li
+              key={note}
+              className="flex items-start gap-2.5 text-sm leading-relaxed text-foreground"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-[0.5625rem] size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
+              />
+              <span>{note}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }

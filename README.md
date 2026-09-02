@@ -18,7 +18,7 @@ A focused task list with due reminders, tags, and a built-in Pomodoro timer. Eve
 
 **Guided first run** — A browser opening Marzano for the first time gets a seven-step guide: what the app is, how your data stays on your device, and one card for each of the views. It can be skipped, and it is always available again from Guide in the sidebar or from the empty task list.
 
-**What's new** — The first visit after an update raises a short notice with a link to the changelog, which lists every release newest first and marks the ones this browser has not seen. The notice can be switched off from the changelog itself or in Settings; the list stays under What's new in the sidebar.
+**What's new** — The first visit after an update raises a short notice with a link to the changelog, which is built from the commit history and lists every change newest first and marks the ones this browser has not seen. The notice can be switched off from the changelog itself or in Settings; the list stays under What's new in the sidebar.
 
 **Accessible and responsive** — Keyboard-navigable throughout, with every change announced to screen readers via a live region. The sidebar collapses to a sheet on small screens, and animation is dropped when the system asks for reduced motion.
 

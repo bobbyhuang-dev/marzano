@@ -231,7 +231,7 @@ function App() {
   // keeps StrictMode's second mount from raising it twice.
   const announceRelease = whatsNew.announce;
   useEffect(() => {
-    if (!announceRelease) return;
+    if (!announceRelease || LATEST_RELEASE === null) return;
 
     toast("Marzano updated", {
       id: "whats-new",

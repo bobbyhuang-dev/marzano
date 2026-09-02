@@ -54,7 +54,7 @@ export function shouldAnnounceRelease(state: WhatsNewState): boolean {
 
 /** The state after the current build has been seen, whichever way that happened. */
 export function markReleaseSeen(state: WhatsNewState): WhatsNewState {
-  return state.seenId === LATEST_RELEASE.id
+  return LATEST_RELEASE === null || state.seenId === LATEST_RELEASE.id
     ? state
     : { ...state, seenId: LATEST_RELEASE.id };
 }
