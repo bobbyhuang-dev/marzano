@@ -19,6 +19,7 @@ import {
   DatabaseBackup,
   SearchX,
   Settings,
+  Sparkles,
   Tags as TagsIcon,
   Timer,
 } from "lucide-react";
@@ -50,6 +51,7 @@ import {
 import { TagDetailPage, TagsPage } from "@/components/tags-page";
 import { type TaskChanges } from "@/components/task-form-dialog";
 import { TaskList } from "@/components/task-list";
+import { WhatsNewDialog } from "@/components/whats-new-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +61,7 @@ import { useCompletedCleanup } from "@/hooks/use-completed-cleanup";
 import { useDueReminders } from "@/hooks/use-due-reminders";
 import { usePomodoro } from "@/hooks/use-pomodoro";
 import { useTheme } from "@/hooks/use-theme";
+import { useWhatsNew } from "@/hooks/use-whats-new";
 import {
   type AccentId,
   accentLabel,
@@ -76,6 +79,7 @@ import {
   saveCalendarScope,
 } from "@/lib/calendar";
 import { saveGuideSeen, shouldOpenGuide } from "@/lib/guide";
+import { LATEST_RELEASE } from "@/lib/releases";
 import { isPresent, tombstone } from "@/lib/sync";
 import {
   COMPLETED_RETENTION_DAYS,
@@ -171,6 +175,8 @@ function App() {
   const [guideOpen, setGuideOpen] = useState(() =>
     shouldOpenGuide(tasks.length > 0 || tags.length > 0),
   );
+  const whatsNew = useWhatsNew();
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [dueValue, setDueValue] = useState<string | null>(null);
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
@@ -213,6 +219,31 @@ function App() {
   useEffect(() => {
     saveCalendarScope(calendarScope);
   }, [calendarScope]);
+
+  /** Closing is when the list counts as read, as with the guide. */
+  const changeWhatsNewOpen = (open: boolean) => {
+    setWhatsNewOpen(open);
+    if (!open) whatsNew.markSeen();
+  };
+
+  // A toast rather than a dialog: the app is opened daily, and a build that
+  // changed is not a reason to stand between someone and their list. The id
+  // keeps StrictMode's second mount from raising it twice.
+  const announceRelease = whatsNew.announce;
+  useEffect(() => {
+    if (!announceRelease) return;
+
+    toast("Marzano updated", {
+      id: "whats-new",
+      description: LATEST_RELEASE.title,
+      icon: <Sparkles className="size-4" aria-hidden="true" />,
+      duration: 12_000,
+      action: {
+        label: "See what's new",
+        onClick: () => setWhatsNewOpen(true),
+      },
+    });
+  }, [announceRelease]);
 
   const navItems: SidebarItem[] = [
     {
@@ -460,6 +491,15 @@ function App() {
     if (!open) saveGuideSeen();
   };
 
+  const selectAnnounceUpdates = (announce: boolean) => {
+    whatsNew.setMuted(!announce);
+    setStatusMessage(
+      announce
+        ? "Updates will be announced."
+        : "Updates will not be announced. What's new stays in the sidebar.",
+    );
+  };
+
   const openTagPage = (tagId: string) => {
     setOpenTagId(tagId);
     setView("tags");
@@ -484,6 +524,13 @@ function App() {
               collapsed={collapsed}
               onClick={() => setGuideOpen(true)}
             />
+            <SidebarFooterButton
+              icon={Sparkles}
+              label="What's new"
+              collapsed={collapsed}
+              fresh={whatsNew.fresh}
+              onClick={() => setWhatsNewOpen(true)}
+            />
             <BackupDialog
               contents={backupContents}
               onImport={importBackup}
@@ -502,6 +549,8 @@ function App() {
               onAccentChange={selectAccent}
               zoom={appearance.zoom}
               onZoomChange={selectZoom}
+              announceUpdates={!whatsNew.muted}
+              onAnnounceUpdatesChange={selectAnnounceUpdates}
               trigger={
                 <SidebarFooterButton
                   icon={Settings}
@@ -774,6 +823,13 @@ function App() {
         </div>
       </main>
       <GuideDialog open={guideOpen} onOpenChange={changeGuideOpen} />
+      <WhatsNewDialog
+        open={whatsNewOpen}
+        onOpenChange={changeWhatsNewOpen}
+        unseen={whatsNew.unseen}
+        muted={whatsNew.muted}
+        onMutedChange={(muted) => selectAnnounceUpdates(!muted)}
+      />
       <Toaster theme={resolvedTheme} />
     </div>
   );

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { EmptyPanel } from "@/components/empty-panel";
+import { SettingToggle } from "@/components/setting-toggle";
 import { TagChip, TagChipList } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +45,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { NumberCombobox } from "@/components/ui/number-combobox";
-import { Switch } from "@/components/ui/switch";
 import type { PomodoroController } from "@/hooks/use-pomodoro";
 import {
   formatFocusDuration,
@@ -296,48 +296,6 @@ function TaskPickerDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function SettingToggle({
-  title,
-  description,
-  checked,
-  onCheckedChange,
-  disabled = false,
-}: {
-  title: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
-}) {
-  const descriptionId = useId();
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-4 py-3.5",
-        disabled && "opacity-60",
-      )}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p
-          id={descriptionId}
-          className="mt-0.5 text-sm leading-5 text-muted-foreground"
-        >
-          {description}
-        </p>
-      </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-        aria-label={title}
-        aria-describedby={descriptionId}
-      />
-    </div>
   );
 }
 

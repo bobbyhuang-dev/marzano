@@ -70,6 +70,8 @@ interface SidebarFooterButtonProps extends ComponentProps<"button"> {
   icon: LucideIcon;
   label: string;
   collapsed: boolean;
+  /** Something behind the button has not been looked at yet. */
+  fresh?: boolean;
 }
 
 /**
@@ -80,6 +82,7 @@ function SidebarFooterButton({
   icon: Icon,
   label,
   collapsed,
+  fresh = false,
   className,
   ...props
 }: SidebarFooterButtonProps) {
@@ -90,8 +93,21 @@ function SidebarFooterButton({
       className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0", className)}
       {...props}
     >
-      <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
-      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>{label}</span>
+      <span className="relative shrink-0">
+        <Icon className="size-[1.125rem]" aria-hidden="true" />
+        {/* On the icon rather than the label, so it survives the collapse. The
+            ring cuts it out of the icon behind it. */}
+        {fresh ? (
+          <span
+            aria-hidden="true"
+            className="absolute -right-1 -top-1 size-2 rounded-full bg-primary ring-2 ring-card"
+          />
+        ) : null}
+      </span>
+      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>
+        {label}
+        {fresh ? <span className="sr-only"> (new)</span> : null}
+      </span>
     </button>
   );
 }

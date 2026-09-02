@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { SettingToggle } from "@/components/setting-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -291,6 +292,8 @@ interface SettingsDialogProps {
   onAccentChange: (accent: AccentId) => void;
   zoom: ZoomLevel;
   onZoomChange: (zoom: ZoomLevel) => void;
+  announceUpdates: boolean;
+  onAnnounceUpdatesChange: (announce: boolean) => void;
 }
 
 /**
@@ -307,6 +310,8 @@ function SettingsDialog({
   onAccentChange,
   zoom,
   onZoomChange,
+  announceUpdates,
+  onAnnounceUpdatesChange,
 }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -360,6 +365,21 @@ function SettingsDialog({
                   />
                 )}
               </Field>
+            </Section>
+
+            <Section
+              title="Updates"
+              description="Marzano changes from time to time. This is how you hear about it."
+            >
+              {/* The toggle row carries its own vertical padding for a list of
+                  them; alone under a heading it is trimmed back. */}
+              <SettingToggle
+                title="Announce updates"
+                description="A short notice when Marzano has changed since your last visit. The full list stays under What's new in the sidebar."
+                checked={announceUpdates}
+                onCheckedChange={onAnnounceUpdatesChange}
+                className="py-0"
+              />
             </Section>
 
             <Section
