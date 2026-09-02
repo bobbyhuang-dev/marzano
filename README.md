@@ -16,6 +16,8 @@ A focused task list with due reminders, tags, and a built-in Pomodoro timer. Eve
 
 **Completed archive** — Checked-off tasks stay in Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to that cutoff are called out.
 
+**Guided first run** — A browser opening Marzano for the first time gets a seven-step guide: what the app is, how your data stays on your device, and one card for each of the views. It can be skipped, and it is always available again from Guide in the sidebar or from the empty task list.
+
 **Accessible and responsive** — Keyboard-navigable throughout, with every change announced to screen readers via a live region. The sidebar collapses to a sheet on small screens, and animation is dropped when the system asks for reduced motion.
 
 ## Getting started

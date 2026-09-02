@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import {
+  BookOpen,
   CalendarClock,
   CalendarDays,
   CalendarPlus,
@@ -34,6 +35,7 @@ import { CompletedTaskList } from "@/components/completed-task-list";
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
+import { GuideDialog } from "@/components/guide-dialog";
 import {
   PomodoroPage,
   PomodoroSettingsDialog,
@@ -73,6 +75,7 @@ import {
   loadCalendarScope,
   saveCalendarScope,
 } from "@/lib/calendar";
+import { saveGuideSeen, shouldOpenGuide } from "@/lib/guide";
 import { isPresent, tombstone } from "@/lib/sync";
 import {
   COMPLETED_RETENTION_DAYS,
@@ -162,6 +165,11 @@ function App() {
   const [calendarScope, setCalendarScope] =
     useState<CalendarScope>(loadCalendarScope);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Opened unasked only on a browser that has never been shown it and holds no
+  // work yet; every other way in is a button.
+  const [guideOpen, setGuideOpen] = useState(() =>
+    shouldOpenGuide(tasks.length > 0 || tags.length > 0),
+  );
   const [title, setTitle] = useState("");
   const [dueValue, setDueValue] = useState<string | null>(null);
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
@@ -431,6 +439,12 @@ function App() {
     setStatusMessage(`Display size set to ${zoom} percent.`);
   };
 
+  /** Closing it in any way is an answer, so it never opens itself again. */
+  const changeGuideOpen = (open: boolean) => {
+    setGuideOpen(open);
+    if (!open) saveGuideSeen();
+  };
+
   const openTagPage = (tagId: string) => {
     setOpenTagId(tagId);
     setView("tags");
@@ -449,6 +463,12 @@ function App() {
         onThemeChange={selectTheme}
         footerActions={(collapsed) => (
           <>
+            <SidebarFooterButton
+              icon={BookOpen}
+              label="Guide"
+              collapsed={collapsed}
+              onClick={() => setGuideOpen(true)}
+            />
             <BackupDialog
               contents={backupContents}
               onImport={importBackup}
@@ -653,6 +673,21 @@ function App() {
                             ? "Everything is checked off."
                             : "Add your first task above."
                         }
+                        action={
+                          // Only on a list that has never held anything: past
+                          // the first task, an emptied list is an achievement
+                          // rather than a place to ask what the app is.
+                          completedTasks.length > 0 ? undefined : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setGuideOpen(true)}
+                            >
+                              <BookOpen aria-hidden="true" />
+                              How Marzano works
+                            </Button>
+                          )
+                        }
                       />
                     )
                   }
@@ -722,6 +757,7 @@ function App() {
           </p>
         </div>
       </main>
+      <GuideDialog open={guideOpen} onOpenChange={changeGuideOpen} />
       <Toaster theme={resolvedTheme} />
     </div>
   );

@@ -40,7 +40,8 @@ import {
 import { type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-const REPOSITORY_URL = "https://github.com/bobbyhuang-dev/marzano";
+/** Shared with the guide, so the two places that link out cannot drift. */
+export const REPOSITORY_URL = "https://github.com/bobbyhuang-dev/marzano";
 
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: LucideIcon }[] = [
   { id: "system", label: "System", icon: Monitor },
