@@ -187,7 +187,9 @@ function TaskItem({
 
   return (
     // `relative` so the z-index Reorder gives the lifted row actually applies;
-    // the surface and shadow are what say it is above the others.
+    // the surface and shadow are what say it is above the others. The card
+    // grows outwards by the checkbox's pull-left (`-ml-3`) so the circle sits
+    // inside it rather than on its edge, while the content stays put.
     <Reorder.Item
       as="li"
       value={task.id}
@@ -199,7 +201,8 @@ function TaskItem({
       className={cn(
         rowClassName,
         "relative",
-        reorderable.dragging && "rounded-lg bg-background shadow-card",
+        reorderable.dragging &&
+          "-mx-3 rounded-lg bg-background px-3 shadow-card",
       )}
     >
       {content}
