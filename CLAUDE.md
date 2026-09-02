@@ -48,6 +48,10 @@ A single-page, offline-only task manager: React 19 + Vite 8 + Tailwind v4 + shad
 
 `Task.dueAt` is a union encoded in a string: either `yyyy-MM-dd` (day-only, comes due at *end* of that local day) or a full ISO instant. Never call `new Date(task.dueAt)` directly — use `dueAtToDate`, `dueAtToDeadline`, and `formatDueDate` from `lib/tasks.ts`, which branch on `isDateOnlyDue`.
 
+### Manual order and reordering
+
+The order of the `tasks` array is the manual order: "Manual order" in the due sort menu shows it as is, and the two date sorts are stable over it. There is no position field, so a JSON *merge* keeps the device's order (`mergeById` never reshuffles) and only a *replace* carries the file's. Reordering goes through `reorderTasks` in `lib/tasks.ts`, which takes positions in the list *as shown* and permutes only the affected tasks within the stored slots they already hold -- that is what keeps a filtered list from disturbing hidden tasks and a sorted list reproducing the order just made. Under a date sort, `reorderBounds` limits a task to the run of tasks sharing its exact deadline; `TaskList` enforces that for both drag (motion's `Reorder`, dragged from the grip handle only) and keyboard (arrow keys on the handle).
+
 ### Background timers
 
 Both `use-due-reminders.ts` and `use-pomodoro.ts` schedule far-future work with the same pattern: `setTimeout` delays are clamped to `MAX_TIMER_DELAY` (~24.8 days, the 32-bit limit) and re-armed, and both also recheck on `window.focus` / `visibilitychange` so a tab left open or backgrounded catches up. `use-completed-cleanup.ts` sweeps expired completed tasks the same way (hourly plus on visibility), and `purgeExpiredTasks` also runs inside `loadTasks`. Completed tasks are kept `COMPLETED_RETENTION_DAYS` (30) then deleted.

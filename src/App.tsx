@@ -88,6 +88,7 @@ import {
   loadDueSort,
   loadTasks,
   removeTagFromTasks,
+  reorderTasks,
   saveDueSort,
   saveTasks,
   sortTasksByDue,
@@ -369,9 +370,23 @@ function App() {
   const selectDueSort = (sort: DueSort) => {
     setDueSort(sort);
     setStatusMessage(
-      `Sorted by due date: ${
-        SORT_OPTIONS.find((option) => option.id === sort)?.description ?? sort
-      }.`,
+      SORT_OPTIONS.find((option) => option.id === sort)?.announcement ??
+        `Sorted by ${sort}.`,
+    );
+  };
+
+  /**
+   * Moves a task between two positions of the list as it is shown. The list
+   * component has already checked the move is allowed under the current sort.
+   */
+  const moveTask = (from: number, to: number) => {
+    const task = visibleTasks[from];
+    if (!task || from === to) return;
+
+    const shownIds = visibleTasks.map((shown) => shown.id);
+    setTasks((currentTasks) => reorderTasks(currentTasks, shownIds, from, to));
+    setStatusMessage(
+      `Moved ${task.title} to position ${to + 1} of ${visibleTasks.length}.`,
     );
   };
 
@@ -695,6 +710,7 @@ function App() {
                   onSave={(task, changes) => updateTask(task.id, changes)}
                   onDelete={deleteTask}
                   onCreateTag={addTag}
+                  reorder={{ sort: dueSort, onMove: moveTask }}
                 />
               </section>
             </>

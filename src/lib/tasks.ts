@@ -400,3 +400,85 @@ export function sortTasksByDue(tasks: Task[], sort: DueSort): Task[] {
     return (left - right) * direction;
   });
 }
+
+/** What two tasks are compared on under a due-date sort; null for undated. */
+function dueKey(task: Task): number | null {
+  return task.dueAt ? dueAtToDeadline(task.dueAt) : null;
+}
+
+/**
+ * The positions the task shown at `index` may be moved to. In manual order that
+ * is the whole list. Under a due-date sort it is only the run of tasks that tie
+ * with it: moving a task past a different deadline would put the list out of
+ * the order it claims to be in, so the sort would just put it back.
+ */
+export function reorderBounds(
+  tasks: Task[],
+  sort: DueSort,
+  index: number,
+): { min: number; max: number } {
+  if (sort === "default") return { min: 0, max: tasks.length - 1 };
+
+  const key = dueKey(tasks[index]);
+  let min = index;
+  while (min > 0 && dueKey(tasks[min - 1]) === key) min -= 1;
+  let max = index;
+  while (max < tasks.length - 1 && dueKey(tasks[max + 1]) === key) max += 1;
+
+  return { min, max };
+}
+
+export function canReorderTask(
+  tasks: Task[],
+  sort: DueSort,
+  from: number,
+  to: number,
+): boolean {
+  if (from < 0 || from >= tasks.length || to < 0 || to >= tasks.length) {
+    return false;
+  }
+
+  const { min, max } = reorderBounds(tasks, sort, from);
+  return to >= min && to <= max;
+}
+
+/**
+ * Moves the task shown at `from` to `to`, where both index `shownIds` -- the
+ * list as the reader sees it, which may be filtered or sorted -- rather than
+ * the stored list. Only the tasks between the two positions change places, and
+ * they trade the slots they already hold in the stored list, so a task hidden
+ * by a filter stays where it was and a stable due-date sort keeps producing
+ * the order the reader just made.
+ */
+export function reorderTasks(
+  tasks: Task[],
+  shownIds: string[],
+  from: number,
+  to: number,
+): Task[] {
+  if (from === to) return tasks;
+
+  const low = Math.min(from, to);
+  const high = Math.max(from, to);
+  const affected = shownIds.slice(low, high + 1);
+  const moved = [...affected];
+  const [id] = moved.splice(from - low, 1);
+  moved.splice(to - low, 0, id);
+
+  const affectedIds = new Set(affected);
+  const slots: number[] = [];
+  const byId = new Map<string, Task>();
+  tasks.forEach((task, index) => {
+    if (!affectedIds.has(task.id)) return;
+    slots.push(index);
+    byId.set(task.id, task);
+  });
+  // The shown list is older than the stored one: something in it is gone.
+  if (slots.length !== moved.length) return tasks;
+
+  const next = [...tasks];
+  slots.forEach((slot, position) => {
+    next[slot] = byId.get(moved[position])!;
+  });
+  return next;
+}

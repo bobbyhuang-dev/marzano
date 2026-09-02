@@ -2,9 +2,9 @@ import { useCallback, useId, useRef, useState } from "react";
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
-  ArrowUpDown,
   Check,
   ChevronDown,
+  GripVertical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,26 +18,33 @@ interface SortOption {
   label: string;
   /** What the row in the menu says, phrased as the order it produces. */
   description: string;
+  /** Read out when the option is picked, since the list reorders unseen. */
+  announcement: string;
   icon: LucideIcon;
 }
 
 const SORT_OPTIONS: SortOption[] = [
   {
+    // Not a sort at all: the list as the reader arranged it. It used to be
+    // called "Sort by date", which promised the one thing it does not do.
     id: "default",
-    label: "Sort by date",
-    description: "The order you added them in",
-    icon: ArrowUpDown,
+    label: "Manual order",
+    description: "Drag tasks into any order",
+    announcement: "Showing tasks in manual order.",
+    icon: GripVertical,
   },
   {
     id: "asc",
     label: "Earliest first",
     description: "Soonest deadline at the top",
+    announcement: "Sorted by due date, soonest first.",
     icon: ArrowUpNarrowWide,
   },
   {
     id: "desc",
     label: "Latest first",
     description: "Furthest deadline at the top",
+    announcement: "Sorted by due date, furthest first.",
     icon: ArrowDownWideNarrow,
   },
 ];
@@ -101,12 +108,12 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
         <div
           id={panelId}
           role="radiogroup"
-          aria-label="Sort by due date"
+          aria-label="Order tasks"
           className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-popover"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
             <span className="px-1 text-xs font-medium text-muted-foreground">
-              Sort by due date
+              Order tasks
             </span>
           </div>
           <ul className="py-1">

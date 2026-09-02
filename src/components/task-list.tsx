@@ -1,5 +1,18 @@
-import { BellRing, CalendarClock, CalendarOff, PencilLine } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  BellRing,
+  CalendarClock,
+  CalendarOff,
+  GripVertical,
+  PencilLine,
+} from "lucide-react";
+import { Reorder, useDragControls, useReducedMotion } from "motion/react";
+import {
+  useId,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import {
@@ -10,7 +23,14 @@ import { TagChipList } from "@/components/tag-chip";
 import { type TagValues } from "@/components/tag-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatDueDate, isTaskDue, type Task } from "@/lib/tasks";
+import {
+  canReorderTask,
+  formatDueDate,
+  isTaskDue,
+  reorderBounds,
+  type DueSort,
+  type Task,
+} from "@/lib/tasks";
 import { resolveTags, type Tag } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +59,46 @@ function TaskDueDate({ task }: { task: Task }) {
   );
 }
 
+/**
+ * Lets the reader rearrange the list. `sort` decides how far a task may go:
+ * anywhere in manual order, only among the tasks it ties with under a
+ * due-date sort. `onMove` receives positions in the list as it is shown.
+ */
+interface ReorderOptions {
+  sort: DueSort;
+  onMove: (from: number, to: number) => void;
+}
+
+interface ReorderHandleProps {
+  task: Task;
+  hintId: string;
+  onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}
+
+/**
+ * The one place a row can be picked up from. The whole row cannot be draggable:
+ * it holds a checkbox, two dialog triggers and selectable text, and on touch
+ * every one of them is also how the page scrolls. `touch-none` is what lets a
+ * finger drag the handle rather than the page.
+ */
+function ReorderHandle({ task, hintId, onPointerDown, onKeyDown }: ReorderHandleProps) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={`Move ${task.title}`}
+      aria-describedby={hintId}
+      title="Drag to reorder"
+      className="cursor-grab touch-none active:cursor-grabbing"
+      onPointerDown={onPointerDown}
+      onKeyDown={onKeyDown}
+    >
+      <GripVertical aria-hidden="true" />
+    </Button>
+  );
+}
+
 interface TaskItemProps {
   task: Task;
   tags: Tag[];
@@ -47,6 +107,13 @@ interface TaskItemProps {
   onSave: (changes: TaskChanges) => void;
   onDelete: () => void;
   onCreateTag: (values: TagValues) => Tag;
+  /** Present only on a list that can be rearranged. */
+  reorderable?: {
+    hintId: string;
+    dragging: boolean;
+    onDraggingChange: (dragging: boolean) => void;
+    onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  };
 }
 
 function TaskItem({
@@ -57,9 +124,13 @@ function TaskItem({
   onSave,
   onDelete,
   onCreateTag,
+  reorderable,
 }: TaskItemProps) {
-  return (
-    <li className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">
+  const dragControls = useDragControls();
+  const reducedMotion = useReducedMotion();
+
+  const content = (
+    <>
       {/* The 2.75rem hit area is pulled left so the circle itself, not the
           button around it, lines up with the heading above the list. */}
       <Checkbox
@@ -98,8 +169,41 @@ function TaskItem({
           }
         />
         <DeleteTaskDialog task={task} onDelete={onDelete} />
+        {reorderable ? (
+          <ReorderHandle
+            task={task}
+            hintId={reorderable.hintId}
+            onPointerDown={(event) => dragControls.start(event)}
+            onKeyDown={reorderable.onKeyDown}
+          />
+        ) : null}
       </div>
-    </li>
+    </>
+  );
+
+  const rowClassName = "flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4";
+
+  if (!reorderable) return <li className={rowClassName}>{content}</li>;
+
+  return (
+    // `relative` so the z-index Reorder gives the lifted row actually applies;
+    // the surface and shadow are what say it is above the others.
+    <Reorder.Item
+      as="li"
+      value={task.id}
+      dragListener={false}
+      dragControls={dragControls}
+      onDragStart={() => reorderable.onDraggingChange(true)}
+      onDragEnd={() => reorderable.onDraggingChange(false)}
+      transition={reducedMotion ? { duration: 0 } : undefined}
+      className={cn(
+        rowClassName,
+        "relative",
+        reorderable.dragging && "rounded-lg bg-background shadow-card",
+      )}
+    >
+      {content}
+    </Reorder.Item>
   );
 }
 
@@ -113,6 +217,7 @@ interface TaskListProps {
   onSave: (task: Task, changes: TaskChanges) => void;
   onDelete: (task: Task) => void;
   onCreateTag: (values: TagValues) => Tag;
+  reorder?: ReorderOptions;
 }
 
 /** The list of open tasks, shared by the task page and every tag's page. */
@@ -126,32 +231,123 @@ function TaskList({
   onSave,
   onDelete,
   onCreateTag,
+  reorder,
 }: TaskListProps) {
+  const hintId = useId();
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Reorder.Group ignores drags until it has rendered again after the last
+  // one it reported, so a move this list declines has to re-render it anyway
+  // or the row stays stuck to the pointer for the rest of the gesture.
+  const [, setDeclined] = useState(0);
+
+  const move = (from: number, to: number): boolean => {
+    if (!reorder || !canReorderTask(tasks, reorder.sort, from, to)) return false;
+    reorder.onMove(from, to);
+    return true;
+  };
+
+  /**
+   * Reorder reports the whole new order rather than which row moved; the row
+   * that travelled furthest is the one under the pointer, the rest only
+   * stepped aside for it.
+   */
+  const handleReorder = (nextIds: string[]) => {
+    let from = -1;
+    let to = -1;
+    let furthest = 0;
+    tasks.forEach((task, index) => {
+      const next = nextIds.indexOf(task.id);
+      const distance = Math.abs(next - index);
+      if (next !== -1 && distance > furthest) {
+        furthest = distance;
+        from = index;
+        to = next;
+      }
+    });
+
+    if (from === -1 || !move(from, to)) setDeclined((count) => count + 1);
+  };
+
+  const moveByKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (!reorder) return;
+
+    const { min, max } = reorderBounds(tasks, reorder.sort, index);
+    const target =
+      event.key === "ArrowUp"
+        ? index - 1
+        : event.key === "ArrowDown"
+          ? index + 1
+          : event.key === "Home"
+            ? min
+            : event.key === "End"
+              ? max
+              : null;
+    if (target === null) return;
+
+    // The keys still scroll the page when there is nowhere to go, which is
+    // the only feedback that the row has hit the edge of where it may sit.
+    if (target < min || target > max || target === index) return;
+    event.preventDefault();
+    move(index, target);
+  };
+
+  if (tasks.length === 0) return <div>{empty}</div>;
+
+  const rows = tasks.map((task, index) => (
+    <TaskItem
+      key={task.id}
+      task={task}
+      tags={tags}
+      tagsById={tagsById}
+      onComplete={() => onComplete(task)}
+      onSave={(changes) => onSave(task, changes)}
+      onDelete={() => onDelete(task)}
+      onCreateTag={onCreateTag}
+      reorderable={
+        reorder
+          ? {
+              hintId,
+              dragging: draggingId === task.id,
+              onDraggingChange: (dragging) =>
+                setDraggingId(dragging ? task.id : null),
+              onKeyDown: (event) => moveByKey(event, index),
+            }
+          : undefined
+      }
+    />
+  ));
+
+  // The first row's top padding would stack on the heading's margin and open
+  // a gap twice the one above it, so the list absorbs one row's worth.
+  const listClassName = "-mt-3.5 divide-y divide-border sm:-mt-4";
+
+  if (!reorder) {
+    return (
+      <div>
+        <ul className={listClassName} aria-label={label}>
+          {rows}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div>
-      {tasks.length === 0 ? (
-        empty
-      ) : (
-        // The first row's top padding would stack on the heading's margin and
-        // open a gap twice the one above it, so the list absorbs one row's worth.
-        <ul
-          className="-mt-3.5 divide-y divide-border sm:-mt-4"
-          aria-label={label}
-        >
-          {tasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              tags={tags}
-              tagsById={tagsById}
-              onComplete={() => onComplete(task)}
-              onSave={(changes) => onSave(task, changes)}
-              onDelete={() => onDelete(task)}
-              onCreateTag={onCreateTag}
-            />
-          ))}
-        </ul>
-      )}
+      <p id={hintId} className="sr-only">
+        {reorder.sort === "default"
+          ? "Drag, or press the up and down arrow keys, to move this task."
+          : "Drag, or press the up and down arrow keys, to move this task among the tasks due at the same time."}
+      </p>
+      <Reorder.Group
+        as="ul"
+        axis="y"
+        values={tasks.map((task) => task.id)}
+        onReorder={handleReorder}
+        aria-label={label}
+        className={cn(listClassName, draggingId && "select-none")}
+      >
+        {rows}
+      </Reorder.Group>
     </div>
   );
 }
