@@ -8,8 +8,23 @@ import {
   useRef,
   useState,
 } from "react";
-import { addDays, format, startOfDay, startOfMonth } from "date-fns";
-import { X } from "lucide-react";
+import {
+  addDays,
+  format,
+  isSameDay,
+  isWeekend,
+  nextSaturday,
+  startOfDay,
+  startOfMonth,
+} from "date-fns";
+import {
+  CalendarRange,
+  type LucideIcon,
+  Sofa,
+  Sun,
+  Sunrise,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -57,6 +72,45 @@ const FALLBACK_TIME_PARTS: TimeParts = {
   meridiem: "AM",
 };
 
+interface QuickPick {
+  id: string;
+  icon: LucideIcon;
+  label: (today: Date) => string;
+  resolve: (today: Date) => Date;
+}
+
+// Each pick shows the day it resolves to, so the two that can coincide (Friday's
+// "Tomorrow" and "This weekend") are not a surprise. The weekend pick is always
+// a Saturday: once the weekend has started, "this weekend" would either be
+// today, which has its own button, or a day already gone, so it becomes the
+// next one.
+const QUICK_PICKS: QuickPick[] = [
+  {
+    id: "today",
+    icon: Sun,
+    label: () => "Today",
+    resolve: (today) => today,
+  },
+  {
+    id: "tomorrow",
+    icon: Sunrise,
+    label: () => "Tomorrow",
+    resolve: (today) => addDays(today, 1),
+  },
+  {
+    id: "weekend",
+    icon: Sofa,
+    label: (today) => (isWeekend(today) ? "Next weekend" : "This weekend"),
+    resolve: (today) => nextSaturday(today),
+  },
+  {
+    id: "next-week",
+    icon: CalendarRange,
+    label: () => "Next week",
+    resolve: (today) => addDays(today, 7),
+  },
+];
+
 function pad(part: number): string {
   return String(part).padStart(2, "0");
 }
@@ -94,17 +148,22 @@ function minuteOptions(minutes: number): number[] {
     : [...steps, minutes].sort((a, b) => a - b);
 }
 
-// The dialog width is derived from the calendar: 7 day cells of 3.25rem plus the
-// 1.5rem section padding on each side (7 * 3.25rem + 3rem = 25.75rem). Below that
-// width the cells shrink to keep filling the padded content box, so every section
-// -- header, quick select, calendar, time and footer -- shares the same insets.
-const DIALOG_MAX_WIDTH = "25.75rem";
-// Rows give height back on short screens: the sections around the calendar need
-// roughly 33rem, and a month needs seven rows (the caption plus six weeks).
+// The narrow dialog width is derived from the calendar: 7 day cells of 3.25rem
+// plus the 1.5rem section padding on each side (7 * 3.25rem + 3rem = 25.75rem).
+// Below that width the cells shrink to keep filling the padded content box, so
+// every section -- header, quick select, calendar, time and footer -- shares
+// the same insets. From `md` up the quick select and the time move beside the
+// calendar, and the extra width is theirs.
+//
+// Rows give height back on short screens. How much room the rest of the dialog
+// takes depends on the layout, so the sections around the calendar are
+// measured by `--due-dialog-surround`, set per breakpoint on the layout below:
+// stacked, they need roughly 36rem; side by side, only the header, the footer
+// and the calendar's own chrome remain above and below it.
 const CALENDAR_STYLE = {
   "--calendar-cell-size": "clamp(2.5rem, calc((100vw - 2.25rem) / 7), 3.25rem)",
   "--calendar-cell-height":
-    "clamp(2.75rem, calc((100dvh - 33rem) / 7), var(--calendar-cell-size))",
+    "clamp(2.75rem, calc((100dvh - var(--due-dialog-surround)) / 7), var(--calendar-cell-size))",
 } as CSSProperties;
 
 interface DueDatePickerDialogProps {
@@ -178,10 +237,6 @@ function DueDatePickerDialog({
     setError("");
   };
 
-  const selectShortcut = (daysFromToday: number) => {
-    selectDate(addDays(startOfDay(new Date()), daysFromToday));
-  };
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // The dialog is portalled out of the DOM, but React still bubbles this
@@ -245,8 +300,7 @@ function DueDatePickerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-0.25rem)] flex-col gap-0 overflow-hidden p-0"
-        style={{ maxWidth: DIALOG_MAX_WIDTH }}
+        className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-0.25rem)] max-w-[25.75rem] flex-col gap-0 overflow-hidden p-0 md:max-w-[46rem]"
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, titleRef.current)
         }
@@ -277,30 +331,57 @@ function DueDatePickerDialog({
               onScroll={syncOverflow}
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
             >
-              <div>
-                <div className="border-y border-border bg-muted/35 p-4 min-[420px]:px-6">
+              {/* Stacked, the sections read top to bottom in source order:
+                  quick select, calendar, time. From `md` the same three become
+                  a two-column grid with the calendar spanning the left and the
+                  other two stacked on the right; the grid placement classes are
+                  what moves them, so the tab order is unchanged. */}
+              <div className="[--due-dialog-surround:36rem] md:grid md:grid-cols-[auto_minmax(0,1fr)] md:border-t md:border-border md:[--due-dialog-surround:19rem]">
+                <div className="border-y border-border bg-muted/35 p-4 min-[420px]:px-6 md:col-start-2 md:row-start-1 md:border-y-0 md:border-b md:border-l md:p-5">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Quick select
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => selectShortcut(1)}
-                    >
-                      Tomorrow
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => selectShortcut(7)}
-                    >
-                      Next week
-                    </Button>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+                    {QUICK_PICKS.map((pick) => {
+                      const date = pick.resolve(today);
+                      const active =
+                        selectedDate !== undefined &&
+                        isSameDay(selectedDate, date);
+
+                      return (
+                        <Button
+                          key={pick.id}
+                          type="button"
+                          variant="secondary"
+                          aria-pressed={active}
+                          onClick={() => selectDate(date)}
+                          className={cn(
+                            "h-auto justify-start gap-2.5 px-3 py-2 text-left",
+                            active &&
+                              "bg-primary text-primary-foreground hover:bg-primary/90",
+                          )}
+                        >
+                          <pick.icon aria-hidden="true" />
+                          <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-baseline md:justify-between md:gap-3">
+                            <span className="truncate">{pick.label(today)}</span>
+                            <span
+                              className={cn(
+                                "truncate text-xs font-normal",
+                                active
+                                  ? "text-primary-foreground/75"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {format(date, "EEE, MMM d")}
+                            </span>
+                          </span>
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="flex justify-center px-4 py-3 min-[420px]:px-6 min-[420px]:py-4">
+                <div className="flex justify-center px-4 py-3 min-[420px]:px-6 min-[420px]:py-4 md:col-start-1 md:row-span-2 md:row-start-1 md:items-center md:py-5">
                   <Calendar
                     className="p-0"
                     style={CALENDAR_STYLE}
@@ -318,7 +399,7 @@ function DueDatePickerDialog({
                   />
                 </div>
 
-                <div className="grid gap-3 border-t border-border p-4 min-[420px]:p-6">
+                <div className="grid gap-3 border-t border-border p-4 min-[420px]:p-6 md:col-start-2 md:row-start-2 md:border-t-0 md:border-l md:p-5">
                   <div className="grid gap-2">
                     <Label htmlFor={timeId}>
                       Time{" "}
