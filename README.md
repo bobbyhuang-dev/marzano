@@ -1,30 +1,55 @@
-# <img src="public/favicon.svg" alt="" width="30" height="30"> Marzano
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
+    <img src=".github/assets/banner-light.svg" alt="Marzano: tasks, due reminders, tags, a calendar and a Pomodoro timer. Everything stays in your browser." width="100%">
+  </picture>
+</p>
 
-A focused task list with due reminders, tags, and a built-in Pomodoro timer. Everything runs in the browser and is stored on your device — no account, no server, no network calls.
+<p align="center">
+  <a href="https://marzano.bobbyhuang.dev"><strong>Open the app</strong></a>
+  &nbsp;·&nbsp; <a href="#features">Features</a>
+  &nbsp;·&nbsp; <a href="#getting-started">Getting started</a>
+  &nbsp;·&nbsp; <a href="#your-data">Your data</a>
+  &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/bobbyhuang-dev/marzano/actions/workflows/deploy.yml"><img src="https://github.com/bobbyhuang-dev/marzano/actions/workflows/deploy.yml/badge.svg" alt="Deploy status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-141414" alt="MIT license"></a>
+  <a href=".nvmrc"><img src="https://img.shields.io/badge/node-24_LTS-141414" alt="Node 24 LTS"></a>
+</p>
+
+Marzano is a focused task list with due reminders, tags, a calendar, and a built-in Pomodoro timer. It runs entirely in the browser and keeps everything on your device: no account, no server, no network calls. It is a San Marzano tomato wearing a check, which is the whole pun.
 
 ## Features
 
-**Tasks** — Add a task with an optional due date and tags, edit or delete it inline, and check it off. Completing a task raises a toast with an Undo action.
+**Tasks** — Add a task with an optional due date and tags, edit or delete it inline, and check it off. Completing a task raises a toast with an Undo action. Drag a row by its grip, or move it with the arrow keys, to set the order by hand.
 
-**Due dates and reminders** — A due date can be a day (`Fri, Mar 14`) or a day and time. Day-only tasks come due at the end of that day. When a task falls due the app raises a reminder, including on a tab that has been left open or in the background. The date picker has Tomorrow / Next week shortcuts and an optional time.
+**Due dates and reminders** — A due date is either a day (`Fri, Mar 14`) or a day and a time; day-only tasks come due at the end of that day. When a task falls due the app raises a reminder, including in a tab left open or in the background. The picker has Tomorrow and Next week shortcuts and an optional time.
 
-**Sorting and filtering** — Order open tasks by deadline in either direction (undated tasks always sit at the bottom) or keep the order you entered them in. Filter the list down to one or more tags. The sort is remembered between sessions; the filter is not.
+**Calendar** — Open tasks laid out on the days they are due, a week or a month at a time. Pick a day to see its tasks in a list where they can be completed, edited, and deleted as on the task page, or add a task straight onto that day. The grid is one tab stop: arrow keys, Home/End and PageUp/PageDown move through it.
 
-**Tags** — Colour-coded labels with a 30-colour spectrum palette. Each new tag is offered the first unused colour, and label text automatically renders black or white against its fill, whichever is more readable. The Tags page shows how much open and total work sits behind each tag, and each tag has its own page listing its tasks.
+**Sorting and filtering** — Order open tasks by deadline in either direction, with undated tasks at the bottom, or keep your manual order. Filter the list to one or more tags. The sort is remembered between sessions; the filter is not.
 
-**Pomodoro** — A focus timer tied to your task list: pick a task, run a round, and the time is credited to that task. Configurable focus, short-break, and long-break durations, long-break interval, and optional auto-start for breaks and focus rounds. Round completion is announced with a chime, an in-app toast, and — with permission — a desktop notification. An activity panel shows today's focus time, rounds, tasks touched, and recent sessions. The timer is reconstructed from wall-clock time, so it survives a reload, a backgrounded tab, or a sleeping machine.
+**Tags** — Colour-coded labels from a 30-colour spectrum. Each new tag is offered the first unused colour, and its text renders black or white against the fill, whichever is more readable. The Tags page shows how much open and total work sits behind each tag, and every tag has its own page listing its tasks.
 
-**Completed archive** — Checked-off tasks stay in Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to that cutoff are called out.
+**Pomodoro** — A focus timer wired into the list: pick a task, run a round, and the time is credited to that task. Focus, short-break and long-break lengths, the long-break interval, and auto-start are all configurable. A finished round is announced with a chime, an in-app toast, and, with permission, a desktop notification. An activity panel shows today's focus time, rounds, tasks touched, and recent sessions. The timer is reconstructed from wall-clock time, so a reload, a backgrounded tab, or a sleeping machine cannot lose a round.
 
-**Guided first run** — A browser opening Marzano for the first time gets a seven-step guide: what the app is, how your data stays on your device, and one card for each of the views. It can be skipped, and it is always available again from Guide in the sidebar or from the empty task list.
+**Completed archive** — Checked-off tasks stay under Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to the cutoff are called out.
 
-**What's new** — The first visit after an update raises a short notice with a link to the changelog, which is built from the commit history and lists every change newest first and marks the ones this browser has not seen. The notice can be switched off from the changelog itself or in Settings; the list stays under What's new in the sidebar.
+**Backup** — Export your tasks, tags and Pomodoro history as one readable JSON file, and import it in another browser. Importing merges by default, keeping whichever copy of each record was edited last, so two browsers can be brought together without losing either side. Replace is there for a clean restore.
 
-**Accessible and responsive** — Keyboard-navigable throughout, with every change announced to screen readers via a live region. The sidebar collapses to a sheet on small screens, and animation is dropped when the system asks for reduced motion.
+**Appearance** — Light and dark themes that follow the system by default, seven accent colours, and a display size that scales the whole app rather than just the text. All three are applied before the first paint, so there is no flash on load.
+
+**Guided first run** — A browser opening Marzano for the first time gets a seven-step guide: what the app is, how your data stays on your device, and one card for each view. It can be skipped and is always available again from Guide in the sidebar.
+
+**What's new** — The first visit after an update raises a short notice with a link to the changelog. The changelog is built from the commit history at build time, lists every change newest first, and marks the ones this browser has not seen. The notice can be switched off from the changelog or in Settings.
+
+**Accessible and responsive** — Keyboard-navigable throughout, with every change announced to screen readers through a live region. The sidebar collapses to a sheet on small screens, and animation is dropped when the system asks for reduced motion.
 
 ## Getting started
 
-Requires **Node 24 LTS** (the current Active LTS; `.nvmrc` pins it) and [pnpm](https://pnpm.io). Node 20.19+, 22.13+, and the current release work too — that range is declared in `package.json`.
+Requires **Node 24 LTS** (pinned in `.nvmrc`; 20.19+ and 22.13+ also work) and [pnpm](https://pnpm.io), which `corepack enable` provides at the pinned version.
 
 ```bash
 nvm use          # or: fnm use
@@ -32,35 +57,32 @@ pnpm install
 pnpm dev
 ```
 
-The dev server prints a local URL. Other scripts:
+The dev server prints a local URL. The other scripts:
 
 ```bash
-pnpm build     # type-check and bundle to dist/client/
+pnpm build     # type-check, then bundle to dist/client/
 pnpm preview   # serve the production build locally
-pnpm lint      # run ESLint
+pnpm lint      # eslint .
+pnpm icons     # re-render the favicon set in public/ from src/lib/brand.ts
 ```
 
-`pnpm build` produces a static `dist/client/` directory that can be served from any static host.
+There is no test suite; `pnpm build` type-checks the whole project and is the verification gate. The output in `dist/client/` is a static site that any host can serve, with every path falling back to `index.html`.
 
 ## Deployment
 
-Production is hosted on Cloudflare Workers at
-[`marzano.bobbyhuang.dev`](https://marzano.bobbyhuang.dev). Pushing to `main`
-runs the GitHub Actions deployment workflow, which validates the app and
-publishes the new build. The workflow requires the repository secrets
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+Production is [marzano.bobbyhuang.dev](https://marzano.bobbyhuang.dev), served as static assets from Cloudflare Workers. Every push to `main` runs the [deploy workflow](.github/workflows/deploy.yml), which lints, builds, and publishes; a merged change is live within minutes. The workflow needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and it checks out the full history because the changelog is built from the git log.
 
-Marzano data stays in each browser's `localStorage`; deployments do not modify
-it. When moving between different hostnames, export a JSON backup from the old
-site and merge it into the new site before retiring the old hostname.
+Deployments never touch user data, which lives in each browser. When moving between hostnames, export a backup from the old site and import it into the new one before retiring the old hostname.
 
 ## Your data
 
-Everything lives in your browser's `localStorage` under keys prefixed `marzano.` — tasks, tags, the due sort, and the Pomodoro settings, timer, and session history. Nothing is uploaded anywhere. The flip side is that the data is per-browser and per-device: clearing site data erases it, and there is no sync between browsers. Desktop alerts additionally need notification permission, which the Pomodoro settings will ask for.
+Everything lives in your browser's `localStorage` under keys prefixed `marzano.`: tasks, tags, the sort and calendar range, the theme, accent and display size, the sidebar width, the guide and update flags, and the Pomodoro settings, timer, and session history. Nothing is uploaded anywhere.
+
+The flip side is that data is per browser and per device. Clearing site data erases it, and there is no sync between browsers; Backup is how data travels. Desktop alerts need notification permission, which the Pomodoro settings will ask for.
 
 ## Built with
 
-React 19, TypeScript, and Vite. Styling is Tailwind CSS v4 with [shadcn/ui](https://ui.shadcn.com) components on Radix primitives; icons are [Lucide](https://lucide.dev), toasts are [Sonner](https://sonner.emilkowal.ski), date handling is [date-fns](https://date-fns.org), and the calendar is [React DayPicker](https://daypicker.dev).
+React 19, TypeScript, and Vite. Styling is Tailwind CSS v4 with [shadcn/ui](https://ui.shadcn.com) components on Radix primitives. Icons are [Lucide](https://lucide.dev), toasts are [Sonner](https://sonner.emilkowal.ski), animation is [Motion](https://motion.dev), date handling is [date-fns](https://date-fns.org), and the date picker is [React DayPicker](https://daypicker.dev).
 
 ## Project layout
 
@@ -69,12 +91,19 @@ src/
   App.tsx          application state and view switching
   components/      feature components
   components/ui/   shadcn/ui primitives
-  hooks/           due reminders, completed-task cleanup, Pomodoro controller
-  lib/             task, tag, and Pomodoro domain logic and persistence
-  index.css        Tailwind theme and base styles
+  hooks/           due reminders, completed-task cleanup, Pomodoro controller, theme, updates
+  lib/             tasks, tags, calendar, Pomodoro, backup, sync, and their persistence
+  index.css        Tailwind theme, colour tokens, and motion
+scripts/
+  git-releases.ts  Vite plugin that turns the git log into the changelog
+  render-icons.mjs renders public/ from the brand mark
 ```
 
-`CLAUDE.md` documents the architecture in more depth — the persistence contract, the due-date encoding, and how the Pomodoro state machine works.
+[`CLAUDE.md`](CLAUDE.md) documents the architecture in depth: the persistence contract, the due-date encoding, the sync bookkeeping behind Backup, and how the Pomodoro state machine works.
+
+## Contributing
+
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks to run, and why commit messages double as release notes. Security problems go through [SECURITY.md](SECURITY.md) rather than a public issue.
 
 ## License
 

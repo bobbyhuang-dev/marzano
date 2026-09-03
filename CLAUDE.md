@@ -8,7 +8,7 @@ Node 24 LTS (pinned in `.nvmrc`; `engines` allows 20.19+/22.13+/24+) and pnpm (p
 
 ```bash
 pnpm dev       # Vite dev server
-pnpm build     # tsc -b (type-check, noEmit) then vite build -> dist/
+pnpm build     # tsc -b (type-check, noEmit) then vite build -> dist/client/
 pnpm lint      # eslint .
 pnpm preview   # serve the built dist/
 pnpm icons     # re-render public/ favicons from src/lib/brand.ts (needs Node 24)
