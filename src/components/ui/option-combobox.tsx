@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import {
   claimListOpen,
@@ -15,6 +16,7 @@ import {
   type Placement,
 } from "@/components/ui/combobox-list";
 import { SEGMENT_FOCUS_RING } from "@/components/ui/squircle-segment";
+import { popoverMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface OptionComboboxProps<T extends string> {
@@ -166,38 +168,44 @@ function OptionCombobox<T extends string>({
         />
       </button>
 
-      {open ? (
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          style={{ maxHeight: placement.maxHeight }}
-          className={cn(
-            "absolute inset-x-0 z-50 overflow-y-auto overscroll-contain rounded-md border border-border bg-background p-1 shadow-popover dark:bg-popover",
-            placement.above ? "bottom-full mb-1" : "top-full mt-1",
-          )}
-        >
-          {options.map((option, index) => (
-            <li
-              key={option}
-              id={`${listId}-${index}`}
-              role="option"
-              aria-selected={option === value}
-              data-active={index === activeIndex}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActiveIndex(index)}
-              onClick={() => selectOption(option)}
-              className={cn(
-                "flex h-9 cursor-pointer items-center rounded-sm px-3 text-sm text-foreground",
-                index === activeIndex && "bg-accent text-accent-foreground",
-                option === value && "font-semibold",
-              )}
-            >
-              {option}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <AnimatePresence>
+        {open ? (
+          <motion.ul
+            key="list"
+            {...popoverMotion(placement.above ? "above" : "below")}
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            style={{ maxHeight: placement.maxHeight }}
+            className={cn(
+              "absolute inset-x-0 z-50 overflow-y-auto overscroll-contain rounded-md border border-border bg-background p-1 shadow-popover dark:bg-popover",
+              placement.above
+                ? "bottom-full mb-1 origin-bottom"
+                : "top-full mt-1 origin-top",
+            )}
+          >
+            {options.map((option, index) => (
+              <li
+                key={option}
+                id={`${listId}-${index}`}
+                role="option"
+                aria-selected={option === value}
+                data-active={index === activeIndex}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => selectOption(option)}
+                className={cn(
+                  "flex h-9 cursor-pointer items-center rounded-sm px-3 text-sm text-foreground",
+                  index === activeIndex && "bg-accent text-accent-foreground",
+                  option === value && "font-semibold",
+                )}
+              >
+                {option}
+              </li>
+            ))}
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

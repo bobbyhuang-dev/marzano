@@ -129,7 +129,7 @@ function DayCell({
         )}`}
         onClick={onSelect}
         className={cn(
-          "flex w-full flex-col items-stretch gap-1 overflow-hidden rounded-md border p-1 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:gap-1.5 sm:p-1.5",
+          "flex w-full flex-col items-stretch gap-1 overflow-hidden rounded-md border p-1 text-left transition-ui outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:gap-1.5 sm:p-1.5",
           layout.height,
           day.inScope
             ? "border-border bg-card hover:bg-accent/50"

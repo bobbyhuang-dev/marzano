@@ -1,5 +1,5 @@
 import { useId, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -55,7 +55,6 @@ function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   const rowRef = useRef<HTMLDivElement>(null);
   const highlightId = useId();
-  const reduceMotion = useReducedMotion();
   const selectedIndex = options.findIndex((option) => option.id === value);
 
   const moveTo = (index: number) => {
@@ -113,7 +112,7 @@ function SegmentedControl<T extends string>({
             onClick={() => onValueChange(option.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "relative flex min-h-10 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-[color,box-shadow] duration-150 ease-out outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70",
+              "relative flex min-h-10 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-ui outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70",
               // The narrowest phone has to fit three of these, so a stretched row
               // keeps the padding the grid it replaced used.
               stretch && "min-h-11 flex-1 px-2",
@@ -138,11 +137,6 @@ function SegmentedControl<T extends string>({
                       // shadow does nothing, and only the lighter surface reads.
                       "bg-popover shadow-thumb dark:bg-secondary",
                 )}
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 520, damping: 42 }
-                }
               />
             ) : null}
             <span className="relative flex items-center gap-2">

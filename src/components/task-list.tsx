@@ -5,7 +5,7 @@ import {
   GripVertical,
   PencilLine,
 } from "lucide-react";
-import { Reorder, useDragControls, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import {
   useId,
   useState,
@@ -23,6 +23,8 @@ import { TagChipList } from "@/components/tag-chip";
 import { type TagValues } from "@/components/tag-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAnimating } from "@/hooks/use-animating";
+import { listRowMotion } from "@/lib/motion";
 import {
   canReorderTask,
   formatDueDate,
@@ -127,7 +129,7 @@ function TaskItem({
   reorderable,
 }: TaskItemProps) {
   const dragControls = useDragControls();
-  const reducedMotion = useReducedMotion();
+  const animating = useAnimating();
 
   const content = (
     <>
@@ -181,9 +183,24 @@ function TaskItem({
     </>
   );
 
-  const rowClassName = "flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4";
+  // The padding sits on an inner box rather than the row: the row's height is
+  // what animates as it joins or leaves the list, and padding on it would be
+  // left standing at height zero.
+  const row = (
+    <div className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">{content}</div>
+  );
 
-  if (!reorderable) return <li className={rowClassName}>{content}</li>;
+  if (!reorderable) {
+    return (
+      <motion.li
+        {...listRowMotion}
+        {...animating.handlers}
+        className={cn("relative", animating.active && "overflow-clip")}
+      >
+        {row}
+      </motion.li>
+    );
+  }
 
   return (
     // `relative` so the z-index Reorder gives the lifted row actually applies;
@@ -195,17 +212,18 @@ function TaskItem({
       value={task.id}
       dragListener={false}
       dragControls={dragControls}
+      {...listRowMotion}
+      {...animating.handlers}
       onDragStart={() => reorderable.onDraggingChange(true)}
       onDragEnd={() => reorderable.onDraggingChange(false)}
-      transition={reducedMotion ? { duration: 0 } : undefined}
       className={cn(
-        rowClassName,
         "relative",
+        animating.active && "overflow-clip",
         reorderable.dragging &&
           "-mx-3 rounded-lg bg-background px-3 shadow-card",
       )}
     >
-      {content}
+      {row}
     </Reorder.Item>
   );
 }
@@ -294,7 +312,10 @@ function TaskList({
     move(index, target);
   };
 
-  if (tasks.length === 0) return <div>{empty}</div>;
+  // Both wrappers fade in, so trading the list for the empty panel -- a tag
+  // filter that leaves nothing, the last task completed -- is a crossfade
+  // rather than a cut.
+  if (tasks.length === 0) return <div className="animate-fade-in">{empty}</div>;
 
   const rows = tasks.map((task, index) => (
     <TaskItem
@@ -326,16 +347,16 @@ function TaskList({
 
   if (!reorder) {
     return (
-      <div>
+      <div className="animate-fade-in">
         <ul className={listClassName} aria-label={label}>
-          {rows}
+          <AnimatePresence initial={false}>{rows}</AnimatePresence>
         </ul>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <p id={hintId} className="sr-only">
         {reorder.sort === "default"
           ? "Drag, or press the up and down arrow keys, to move this task."
@@ -349,7 +370,9 @@ function TaskList({
         aria-label={label}
         className={cn(listClassName, draggingId && "select-none")}
       >
-        {rows}
+        {/* Rows already on screen do not play an entrance; only a task that
+            arrives -- added, restored, or let through a filter -- grows in. */}
+        <AnimatePresence initial={false}>{rows}</AnimatePresence>
       </Reorder.Group>
     </div>
   );

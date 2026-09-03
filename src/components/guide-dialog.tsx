@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +22,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TRANSITION } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface GuideStep {
@@ -190,7 +191,6 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
   const [index, setIndex] = useState(0);
   /** Which way the last press moved, so the cards slide the way they are read. */
   const [direction, setDirection] = useState<1 | -1>(1);
-  const reduceMotion = useReducedMotion();
   const nextRef = useRef<HTMLButtonElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -223,12 +223,16 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
   // Dynamic variants rather than plain props, because `custom` on
   // AnimatePresence is the only way the card being removed hears about a
   // direction that changed after its last render: a Back press has to send it
-  // out the side it came in from.
-  const distance = reduceMotion ? 0 : 16;
+  // out the side it came in from. The exit is the short length: with
+  // `mode="wait"` the next card cannot start until this one has gone.
   const cardVariants = {
-    enter: (towards: 1 | -1) => ({ opacity: 0, x: towards * distance }),
+    enter: (towards: 1 | -1) => ({ opacity: 0, x: towards * 16 }),
     center: { opacity: 1, x: 0 },
-    exit: (towards: 1 | -1) => ({ opacity: 0, x: towards * -distance }),
+    exit: (towards: 1 | -1) => ({
+      opacity: 0,
+      x: towards * -16,
+      transition: TRANSITION.fast,
+    }),
   };
 
   return (
@@ -264,11 +268,6 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { duration: 0.14, ease: [0.215, 0.61, 0.355, 1] }
-                }
               >
                 <StepCard step={step} />
               </motion.div>
@@ -284,7 +283,7 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
               <span
                 key={entry.id}
                 className={cn(
-                  "h-1.5 rounded-full transition-all duration-200 ease-out",
+                  "h-1.5 rounded-full transition-[width,background-color] duration-base ease-out-cubic",
                   entryIndex === index
                     ? "w-5 bg-primary"
                     : "w-1.5 bg-muted-foreground/30",

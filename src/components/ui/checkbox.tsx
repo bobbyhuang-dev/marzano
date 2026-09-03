@@ -23,7 +23,7 @@ function CheckboxIndicator({
   return (
     <span
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out group-active:scale-90",
+        "flex size-5 shrink-0 items-center justify-center rounded-full border transition-ui group-active:scale-90",
         checked
           ? "border-primary bg-primary text-primary-foreground"
           : "border-input bg-transparent group-hover:border-foreground/45",
@@ -34,7 +34,7 @@ function CheckboxIndicator({
         aria-hidden="true"
         strokeWidth={3}
         className={cn(
-          "size-3.5 transition-opacity duration-150 ease-out",
+          "size-3.5 transition-ui",
           checked ? "opacity-100" : "opacity-0",
         )}
       />

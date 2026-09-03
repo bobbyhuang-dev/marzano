@@ -1,5 +1,17 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// The motion utilities from index.css, so `cn` knows `transition-ui` and a
+// `transition-[...]` are the same slot and `duration-fast` beats `duration-150`.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: { ease: ["out-cubic"] },
+    classGroups: {
+      transition: ["transition-ui", "transition-dial"],
+      duration: [{ duration: ["fast", "base"] }],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

@@ -1,3 +1,5 @@
+import { crossfadeDocument } from "@/lib/motion";
+
 const THEME_STORAGE_KEY = "marzano.theme.v1";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -59,15 +61,25 @@ export function nextTheme(preference: ThemePreference): ThemePreference {
  * The one place the theme reaches the document. The class drives every token
  * in `index.css`; `color-scheme` hands the same news to the form controls,
  * scrollbars, and the native pickers the app does not style itself.
+ *
+ * A change crossfades; a repeat does not. Checking the document rather than
+ * the previous argument is what keeps the first paint still: `index.html` has
+ * already set the class, so the mount-time call finds nothing to change.
  */
 export function applyTheme(theme: ResolvedTheme) {
   const root = document.documentElement;
+  const dark = theme === "dark";
 
-  root.classList.toggle("dark", theme === "dark");
-  root.style.colorScheme = theme;
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", THEME_COLORS[theme]);
+  const paint = () => {
+    root.classList.toggle("dark", dark);
+    root.style.colorScheme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", THEME_COLORS[theme]);
+  };
+
+  if (root.classList.contains("dark") === dark) paint();
+  else crossfadeDocument(paint);
 }
 
 /** Only worth listening to while the preference is `system`. */

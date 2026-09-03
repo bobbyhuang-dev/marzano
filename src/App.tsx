@@ -568,254 +568,259 @@ function App() {
       <main className="min-w-0 flex-1 overflow-x-hidden">
         <div
           className={cn(
-            "mx-auto w-full px-4 py-8 sm:px-6 sm:py-12",
+            "mx-auto w-full px-4 py-8 transition-[max-width] duration-base ease-out-cubic sm:px-6 sm:py-12",
             // Seven columns of days need more room than a single column of task
             // rows, so the calendar is the one page that reads wider.
             view === "calendar" ? "max-w-5xl" : "max-w-3xl",
           )}
         >
-          <div className="mb-8 sm:mb-10">
-            {openTag ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="-ml-3 mb-2 text-muted-foreground"
-                onClick={() => setOpenTagId(null)}
-              >
-                <ChevronLeft aria-hidden="true" />
-                All tags
-              </Button>
-            ) : null}
-            <header className="flex items-center gap-2 sm:gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="-ml-2 shrink-0 text-muted-foreground lg:hidden"
-                aria-label="Open menu"
-                title="Open menu"
-                onClick={() => setMenuOpen(true)}
-              >
-                <PanelLeft aria-hidden="true" />
-              </Button>
-              <h1 className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
-                {pageTitle}
-              </h1>
-              {/* The only page with a setting of its own keeps it on the title
-                  row, rather than floating a control above the page. */}
-              {view === "pomodoro" ? (
-                <PomodoroSettingsDialog controller={pomodoro} />
+          {/* Keyed on the view, so each one is a fresh mount that rises in;
+              no exit, so nothing waits on the one before. The live region
+              stays outside it, or every change would re-announce itself. */}
+          <div key={`${view}/${openTagId ?? ""}`} className="animate-view-in">
+            <div className="mb-8 sm:mb-10">
+              {openTag ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-3 mb-2 text-muted-foreground"
+                  onClick={() => setOpenTagId(null)}
+                >
+                  <ChevronLeft aria-hidden="true" />
+                  All tags
+                </Button>
               ) : null}
-            </header>
-          </div>
+              <header className="flex items-center gap-2 sm:gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="-ml-2 shrink-0 text-muted-foreground lg:hidden"
+                  aria-label="Open menu"
+                  title="Open menu"
+                  onClick={() => setMenuOpen(true)}
+                >
+                  <PanelLeft aria-hidden="true" />
+                </Button>
+                <h1 className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+                  {pageTitle}
+                </h1>
+                {/* The only page with a setting of its own keeps it on the title
+                    row, rather than floating a control above the page. */}
+                {view === "pomodoro" ? (
+                  <PomodoroSettingsDialog controller={pomodoro} />
+                ) : null}
+              </header>
+            </div>
 
-          {view === "tasks" ? (
-            <>
-              <form className="grid gap-3" onSubmit={handleAddTask}>
-                <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)]">
-                  <div className="grid gap-2">
-                    <Label htmlFor={titleId}>Task name</Label>
-                    <Input
-                      ref={titleInputRef}
-                      id={titleId}
-                      value={title}
-                      onChange={(event) => {
-                        setTitle(event.target.value);
-                        if (error) setError("");
-                      }}
-                      placeholder="What needs doing?"
-                      aria-invalid={Boolean(error)}
-                      aria-describedby={error ? errorId : undefined}
-                      autoComplete="off"
-                      spellCheck={false}
-                      data-lpignore="true"
-                      data-1p-ignore
+            {view === "tasks" ? (
+              <>
+                <form className="grid gap-3" onSubmit={handleAddTask}>
+                  <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)]">
+                    <div className="grid gap-2">
+                      <Label htmlFor={titleId}>Task name</Label>
+                      <Input
+                        ref={titleInputRef}
+                        id={titleId}
+                        value={title}
+                        onChange={(event) => {
+                          setTitle(event.target.value);
+                          if (error) setError("");
+                        }}
+                        placeholder="What needs doing?"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? errorId : undefined}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore
+                      />
+                    </div>
+                    <Button type="submit" className="w-full">
+                      <Plus aria-hidden="true" />
+                      Add task
+                    </Button>
+                  </div>
+                  {/* Both are slots the shape of the field above them, muted until
+                      filled: they say "optional" without a word of copy. */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DueDatePickerDialog
+                      value={dueValue}
+                      onValueChange={setDueValue}
+                      title={dueValue ? "Change due date" : "Add due date"}
+                      trigger={
+                        <Button
+                          id={dueId}
+                          variant="outline"
+                          aria-label={
+                            dueValue
+                              ? `Due ${formatDueDate(dueValue)}. Change due date`
+                              : "Add due date"
+                          }
+                          className={cn(
+                            "w-full justify-start overflow-hidden px-3 font-normal",
+                            !dueValue && "text-muted-foreground",
+                          )}
+                        >
+                          {dueValue ? (
+                            <CalendarClock aria-hidden="true" />
+                          ) : (
+                            <CalendarPlus aria-hidden="true" />
+                          )}
+                          <span className="truncate tabular-nums">
+                            {dueValue ? formatDueDate(dueValue) : "Add due date"}
+                          </span>
+                        </Button>
+                      }
+                    />
+                    <TagPickerDialog
+                      tags={presentTags}
+                      value={draftTagIds}
+                      onValueChange={setDraftTagIds}
+                      onCreateTag={addTag}
+                      trigger={<TagSelectTrigger tags={draftTags} />}
                     />
                   </div>
-                  <Button type="submit" className="w-full">
-                    <Plus aria-hidden="true" />
-                    Add task
-                  </Button>
-                </div>
-                {/* Both are slots the shape of the field above them, muted until
-                    filled: they say "optional" without a word of copy. */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <DueDatePickerDialog
-                    value={dueValue}
-                    onValueChange={setDueValue}
-                    title={dueValue ? "Change due date" : "Add due date"}
-                    trigger={
-                      <Button
-                        id={dueId}
-                        variant="outline"
-                        aria-label={
-                          dueValue
-                            ? `Due ${formatDueDate(dueValue)}. Change due date`
-                            : "Add due date"
-                        }
-                        className={cn(
-                          "w-full justify-start overflow-hidden px-3 font-normal",
-                          !dueValue && "text-muted-foreground",
-                        )}
-                      >
-                        {dueValue ? (
-                          <CalendarClock aria-hidden="true" />
-                        ) : (
-                          <CalendarPlus aria-hidden="true" />
-                        )}
-                        <span className="truncate tabular-nums">
-                          {dueValue ? formatDueDate(dueValue) : "Add due date"}
-                        </span>
-                      </Button>
-                    }
-                  />
-                  <TagPickerDialog
-                    tags={presentTags}
-                    value={draftTagIds}
-                    onValueChange={setDraftTagIds}
-                    onCreateTag={addTag}
-                    trigger={<TagSelectTrigger tags={draftTags} />}
-                  />
-                </div>
-                {error ? (
-                  <p id={errorId} role="alert" className="text-sm text-destructive">
-                    {error}
-                  </p>
-                ) : null}
-              </form>
-
-              <section className="mt-8" aria-labelledby="tasks-heading">
-                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <TagFilterMenu
-                    tags={presentTags}
-                    selected={tagFilter}
-                    onSelectedChange={setTagFilter}
-                    counts={tagCounts}
-                    onManageTags={() => selectView("tags")}
-                  />
-                  <DueSortMenu value={dueSort} onValueChange={selectDueSort} />
-                </div>
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h2
-                    id="tasks-heading"
-                    className="text-sm font-semibold tracking-[-0.01em] text-foreground"
-                  >
-                    Your tasks
-                  </h2>
-                  {filtering ? (
-                    <p className="text-xs text-muted-foreground" aria-live="polite">
-                      Showing {visibleTasks.length} of {activeTasks.length}
+                  {error ? (
+                    <p id={errorId} role="alert" className="text-sm text-destructive">
+                      {error}
                     </p>
                   ) : null}
-                </div>
-                <TaskList
-                  tasks={visibleTasks}
-                  tags={presentTags}
-                  tagsById={tagsById}
-                  label="Task list"
-                  empty={
-                    filtering && activeTasks.length > 0 ? (
-                      <EmptyPanel
-                        icon={SearchX}
-                        title="No tasks match"
-                        description="None of your open tasks carry the tags you picked."
-                        action={
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setTagFilter([])}
-                          >
-                            Clear filter
-                          </Button>
-                        }
-                      />
-                    ) : (
-                      <EmptyPanel
-                        icon={completedTasks.length > 0 ? CircleCheckBig : ListTodo}
-                        title={completedTasks.length > 0 ? "All done" : "No tasks yet"}
-                        description={
-                          completedTasks.length > 0
-                            ? "Everything is checked off."
-                            : "Add your first task above."
-                        }
-                        action={
-                          // Only on a list that has never held anything: past
-                          // the first task, an emptied list is an achievement
-                          // rather than a place to ask what the app is.
-                          completedTasks.length > 0 ? undefined : (
+                </form>
+
+                <section className="mt-8" aria-labelledby="tasks-heading">
+                  <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <TagFilterMenu
+                      tags={presentTags}
+                      selected={tagFilter}
+                      onSelectedChange={setTagFilter}
+                      counts={tagCounts}
+                      onManageTags={() => selectView("tags")}
+                    />
+                    <DueSortMenu value={dueSort} onValueChange={selectDueSort} />
+                  </div>
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h2
+                      id="tasks-heading"
+                      className="text-sm font-semibold tracking-[-0.01em] text-foreground"
+                    >
+                      Your tasks
+                    </h2>
+                    {filtering ? (
+                      <p className="text-xs text-muted-foreground" aria-live="polite">
+                        Showing {visibleTasks.length} of {activeTasks.length}
+                      </p>
+                    ) : null}
+                  </div>
+                  <TaskList
+                    tasks={visibleTasks}
+                    tags={presentTags}
+                    tagsById={tagsById}
+                    label="Task list"
+                    empty={
+                      filtering && activeTasks.length > 0 ? (
+                        <EmptyPanel
+                          icon={SearchX}
+                          title="No tasks match"
+                          description="None of your open tasks carry the tags you picked."
+                          action={
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setGuideOpen(true)}
+                              onClick={() => setTagFilter([])}
                             >
-                              <BookOpen aria-hidden="true" />
-                              How Marzano works
+                              Clear filter
                             </Button>
-                          )
-                        }
-                      />
-                    )
-                  }
-                  onComplete={completeTask}
-                  onSave={(task, changes) => updateTask(task.id, changes)}
-                  onDelete={deleteTask}
-                  onCreateTag={addTag}
-                  reorder={{ sort: dueSort, onMove: moveTask }}
-                />
-              </section>
-            </>
-          ) : view === "calendar" ? (
-            <CalendarPage
-              tasks={activeTasks}
-              tags={presentTags}
-              tagsById={tagsById}
-              scope={calendarScope}
-              onScopeChange={selectCalendarScope}
-              onAddTask={addTask}
-              onCompleteTask={completeTask}
-              onSaveTask={(task, changes) => updateTask(task.id, changes)}
-              onDeleteTask={deleteTask}
-              onCreateTag={addTag}
-            />
-          ) : view === "pomodoro" ? (
-            <PomodoroPage
-              controller={pomodoro}
-              tasks={orderedActiveTasks}
-              tagsById={tagsById}
-              onCompleteTask={completeTask}
-            />
-          ) : view === "tags" ? (
-            openTag ? (
-              <TagDetailPage
-                tag={openTag}
+                          }
+                        />
+                      ) : (
+                        <EmptyPanel
+                          icon={completedTasks.length > 0 ? CircleCheckBig : ListTodo}
+                          title={completedTasks.length > 0 ? "All done" : "No tasks yet"}
+                          description={
+                            completedTasks.length > 0
+                              ? "Everything is checked off."
+                              : "Add your first task above."
+                          }
+                          action={
+                            // Only on a list that has never held anything: past
+                            // the first task, an emptied list is an achievement
+                            // rather than a place to ask what the app is.
+                            completedTasks.length > 0 ? undefined : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setGuideOpen(true)}
+                              >
+                                <BookOpen aria-hidden="true" />
+                                How Marzano works
+                              </Button>
+                            )
+                          }
+                        />
+                      )
+                    }
+                    onComplete={completeTask}
+                    onSave={(task, changes) => updateTask(task.id, changes)}
+                    onDelete={deleteTask}
+                    onCreateTag={addTag}
+                    reorder={{ sort: dueSort, onMove: moveTask }}
+                  />
+                </section>
+              </>
+            ) : view === "calendar" ? (
+              <CalendarPage
+                tasks={activeTasks}
                 tags={presentTags}
-                tasks={presentTasks}
                 tagsById={tagsById}
-                counts={tagCounts}
-                onUpdateTag={updateTag}
-                onDeleteTag={deleteTag}
-                onCreateTag={addTag}
+                scope={calendarScope}
+                onScopeChange={selectCalendarScope}
+                onAddTask={addTask}
                 onCompleteTask={completeTask}
                 onSaveTask={(task, changes) => updateTask(task.id, changes)}
                 onDeleteTask={deleteTask}
-              />
-            ) : (
-              <TagsPage
-                tags={presentTags}
-                counts={tagCounts}
-                onOpenTag={openTagPage}
                 onCreateTag={addTag}
-                onUpdateTag={updateTag}
-                onDeleteTag={deleteTag}
               />
-            )
-          ) : (
-            <CompletedTaskList
-              tasks={completedTasks}
-              tagsById={tagsById}
-              onRestore={restoreTask}
-              onDelete={deleteTask}
-            />
-          )}
+            ) : view === "pomodoro" ? (
+              <PomodoroPage
+                controller={pomodoro}
+                tasks={orderedActiveTasks}
+                tagsById={tagsById}
+                onCompleteTask={completeTask}
+              />
+            ) : view === "tags" ? (
+              openTag ? (
+                <TagDetailPage
+                  tag={openTag}
+                  tags={presentTags}
+                  tasks={presentTasks}
+                  tagsById={tagsById}
+                  counts={tagCounts}
+                  onUpdateTag={updateTag}
+                  onDeleteTag={deleteTag}
+                  onCreateTag={addTag}
+                  onCompleteTask={completeTask}
+                  onSaveTask={(task, changes) => updateTask(task.id, changes)}
+                  onDeleteTask={deleteTask}
+                />
+              ) : (
+                <TagsPage
+                  tags={presentTags}
+                  counts={tagCounts}
+                  onOpenTag={openTagPage}
+                  onCreateTag={addTag}
+                  onUpdateTag={updateTag}
+                  onDeleteTag={deleteTag}
+                />
+              )
+            ) : (
+              <CompletedTaskList
+                tasks={completedTasks}
+                tagsById={tagsById}
+                onRestore={restoreTask}
+                onDelete={deleteTask}
+              />
+            )}
+          </div>
 
           <p className="sr-only" aria-live="polite" aria-atomic="true">
             {statusMessage}

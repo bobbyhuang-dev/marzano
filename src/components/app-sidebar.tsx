@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Monitor,
   Moon,
@@ -21,6 +21,7 @@ import {
   type SegmentedOption,
 } from "@/components/ui/segmented-control";
 import { nextTheme, THEME_PREFERENCES, type ThemePreference } from "@/lib/theme";
+import { DURATION, prefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "marzano.sidebar.v1";
@@ -53,7 +54,17 @@ function saveCollapsed(collapsed: boolean) {
 }
 
 const FOOTER_BUTTON =
-  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70";
+  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70";
+
+/**
+ * Text on the docked rail. Collapsing fades it out at once, while the width is
+ * still moving; expanding holds the fade until the rail is nearly open. The
+ * `sr-only` that takes it out of the flow is applied by `narrow`, once the
+ * move is over, so the fade always has a laid-out element to work on. The
+ * drawer has no `group/rail` above it, so its copy of the same text stays put.
+ */
+const RAIL_LABEL =
+  "transition-ui delay-(--transition-duration-fast) group-data-collapsed/rail:opacity-0 group-data-collapsed/rail:delay-0";
 
 const THEME_LABELS: Record<ThemePreference, { label: string; icon: LucideIcon }> = {
   system: { label: "System", icon: Monitor },
@@ -104,7 +115,7 @@ function SidebarFooterButton({
           />
         ) : null}
       </span>
-      <span className={cn("whitespace-nowrap", collapsed && "sr-only")}>
+      <span className={cn("whitespace-nowrap", RAIL_LABEL, collapsed && "sr-only")}>
         {label}
         {fresh ? <span className="sr-only"> (new)</span> : null}
       </span>
@@ -128,7 +139,6 @@ function CyclingThemeButton({
   theme,
   onThemeChange,
 }: Omit<SidebarThemeToggleProps, "collapsed">) {
-  const reduceMotion = useReducedMotion();
   const { label, icon: Icon } = THEME_LABELS[theme];
   const upcoming = THEME_LABELS[nextTheme(theme)].label.toLowerCase();
   const description = `Theme: ${label.toLowerCase()}. Switch to ${upcoming}`;
@@ -139,7 +149,7 @@ function CyclingThemeButton({
       onClick={() => onThemeChange(nextTheme(theme))}
       aria-label={description}
       title={description}
-      className={cn(FOOTER_BUTTON, "w-11 justify-center px-0")}
+      className={cn(FOOTER_BUTTON, "w-11 justify-center px-0 animate-fade-in")}
     >
       <span className="relative flex size-[1.125rem] shrink-0 items-center justify-center">
         <AnimatePresence initial={false}>
@@ -150,11 +160,6 @@ function CyclingThemeButton({
             initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
             animate={{ opacity: 1, rotate: 0, scale: 1 }}
             exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
-            transition={
-              reduceMotion
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 520, damping: 34 }
-            }
           >
             <Icon className="size-[1.125rem]" />
           </motion.span>
@@ -191,6 +196,7 @@ function SidebarThemeToggle({
       stretch
       iconOnly
       variant="raised"
+      className="animate-fade-in"
     />
   );
 }
@@ -204,11 +210,15 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <BrandMark className="size-8 text-primary" />
-      {collapsed ? null : (
-        <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-          Marzano
-        </span>
-      )}
+      <span
+        className={cn(
+          "truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground",
+          RAIL_LABEL,
+          collapsed && "sr-only",
+        )}
+      >
+        Marzano
+      </span>
     </div>
   );
 }
@@ -241,7 +251,7 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
             aria-current={active ? "page" : undefined}
             title={collapsed ? item.label : undefined}
             className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150 ease-out outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
+              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-ui outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
               collapsed && "w-11 flex-col justify-center gap-0.5 px-0",
               active
                 ? "bg-secondary text-foreground"
@@ -249,16 +259,24 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
             )}
           >
             <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
-            <span className={cn("flex-1 truncate text-left", collapsed && "sr-only")}>
+            <span
+              className={cn(
+                "flex-1 truncate text-left",
+                RAIL_LABEL,
+                collapsed && "sr-only",
+              )}
+            >
               {item.label}
             </span>
             {item.count ? (
               // Collapsed, the count sits under the icon rather than floating over
               // its corner, and inherits the item's own colour: a tally of what the
-              // view holds, not a notification waiting to be cleared.
+              // view holds, not a notification waiting to be cleared. Keyed so the
+              // move between the two places fades rather than pops.
               <span
+                key={collapsed ? "stacked" : "inline"}
                 className={cn(
-                  "font-semibold tabular-nums",
+                  "font-semibold tabular-nums animate-fade-in",
                   collapsed ? "text-[0.625rem] leading-none" : "text-xs",
                 )}
               >
@@ -299,68 +317,86 @@ function AppSidebar({
   onMenuOpenChange,
 }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(loadCollapsed);
-  const [revealingToggleLabel, setRevealingToggleLabel] = useState(false);
+  // The choice and the layout are two states, because the layout has to wait
+  // for the width: collapsing keeps the wide layout under the fading labels
+  // until the rail has closed over it, and expanding switches to the wide
+  // layout at once so the opening edge reveals it already in place.
+  const [narrow, setNarrow] = useState(collapsed);
 
   useEffect(() => {
     saveCollapsed(collapsed);
   }, [collapsed]);
 
+  useEffect(() => {
+    if (!collapsed) return;
+
+    const timer = window.setTimeout(
+      () => setNarrow(true),
+      prefersReducedMotion() ? 0 : DURATION.base,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [collapsed]);
+
   const toggleCollapsed = () => {
-    setRevealingToggleLabel(collapsed);
-    setCollapsed(!collapsed);
+    const next = !collapsed;
+
+    setCollapsed(next);
+    if (!next) setNarrow(false);
   };
 
   return (
     <>
       {/* Docked from lg up, where the content still has room to breathe next to it. */}
       <aside
+        data-collapsed={collapsed ? "" : undefined}
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 self-start flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-200 ease-out lg:flex",
+          "group/rail sticky top-0 hidden h-dvh shrink-0 self-start overflow-hidden border-r border-border bg-card transition-[width] duration-base ease-out-cubic lg:block",
           collapsed ? "w-[4.5rem]" : "w-64",
         )}
       >
-        <SidebarBrand collapsed={collapsed} />
-        <SidebarNav
-          items={items}
-          activeId={activeId}
-          onSelect={onSelect}
-          collapsed={collapsed}
-        />
+        {/* Laid out at the width it is heading for, and only revealed or
+            covered by the rail's moving edge: text that reflowed with the
+            width would truncate its way across the move. */}
         <div
-          className={cn(
-            "flex shrink-0 flex-col gap-1 border-t border-border p-3",
-            collapsed && "items-center px-2",
-          )}
+          className={cn("flex h-full flex-col", narrow ? "w-[4.5rem]" : "w-64")}
         >
-          {footerActions?.(collapsed)}
-          <SidebarThemeToggle
-            theme={theme}
-            onThemeChange={onThemeChange}
-            collapsed={collapsed}
+          <SidebarBrand collapsed={narrow} />
+          <SidebarNav
+            items={items}
+            activeId={activeId}
+            onSelect={onSelect}
+            collapsed={narrow}
           />
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-expanded={!collapsed}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0")}
-          >
-            {collapsed ? (
-              <PanelLeft className="size-[1.125rem] shrink-0" aria-hidden="true" />
-            ) : (
-              <PanelLeftClose className="size-[1.125rem] shrink-0" aria-hidden="true" />
+          <div
+            className={cn(
+              "flex shrink-0 flex-col gap-1 border-t border-border p-3",
+              narrow && "items-center px-2",
             )}
-            <span
-              className={cn(
-                "whitespace-nowrap",
-                collapsed && "sr-only",
-                revealingToggleLabel && "animate-sidebar-label-in",
-              )}
-              onAnimationEnd={() => setRevealingToggleLabel(false)}
+          >
+            {footerActions?.(narrow)}
+            <SidebarThemeToggle
+              theme={theme}
+              onThemeChange={onThemeChange}
+              collapsed={narrow}
+            />
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!collapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className={cn(FOOTER_BUTTON, narrow && "w-11 justify-center px-0")}
             >
-              {collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            </span>
-          </button>
+              {collapsed ? (
+                <PanelLeft className="size-[1.125rem] shrink-0" aria-hidden="true" />
+              ) : (
+                <PanelLeftClose className="size-[1.125rem] shrink-0" aria-hidden="true" />
+              )}
+              <span className={cn("whitespace-nowrap", RAIL_LABEL, narrow && "sr-only")}>
+                {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 

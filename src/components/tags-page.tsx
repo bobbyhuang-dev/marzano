@@ -126,7 +126,7 @@ function TagsPage({
                     <button
                       type="button"
                       onClick={() => onOpenTag(tag.id)}
-                      className="group -ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:-ml-3 sm:px-3"
+                      className="group -ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left transition-ui hover:bg-accent/60 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:-ml-3 sm:px-3"
                     >
                       <TagChip tag={tag} size="md" />
                       <span className="shrink-0 text-sm text-muted-foreground">

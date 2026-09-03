@@ -168,25 +168,29 @@ function TimerDial({
           strokeWidth="5"
           className="stroke-border"
         />
-        {/* A zero-length dash with a round cap still paints a dot, so the arc
-            only exists once the round has actually moved. */}
-        {progress > 0 ? (
-          <circle
-            cx="60"
-            cy="60"
-            r={DIAL_RADIUS}
-            fill="none"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={DIAL_CIRCUMFERENCE}
-            strokeDashoffset={DIAL_CIRCUMFERENCE * (1 - progress)}
-            className={cn(
-              "transition-[stroke-dashoffset] duration-700 ease-linear",
-              phase === "focus" ? "stroke-primary" : "stroke-muted-foreground",
-              status === "paused" && "opacity-45",
-            )}
-          />
-        ) : null}
+        {/* Always in the tree, so a reset fades it out and the first second
+            fades it in. A zero-length dash with a round cap still paints a
+            dot, which is why it is hidden rather than empty until the round
+            has actually moved. */}
+        <circle
+          cx="60"
+          cy="60"
+          r={DIAL_RADIUS}
+          fill="none"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={DIAL_CIRCUMFERENCE}
+          strokeDashoffset={DIAL_CIRCUMFERENCE * (1 - progress)}
+          className={cn(
+            "transition-dial",
+            phase === "focus" ? "stroke-primary" : "stroke-muted-foreground",
+            progress === 0
+              ? "opacity-0"
+              : status === "paused"
+                ? "opacity-45"
+                : "opacity-100",
+          )}
+        />
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
@@ -258,7 +262,7 @@ function TaskPickerDialog({
                       onOpenChange(false);
                     }}
                     className={cn(
-                      "flex min-h-16 w-full items-start gap-3 rounded-md px-3 py-3 text-left transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
+                      "flex min-h-16 w-full items-start gap-3 rounded-md px-3 py-3 text-left transition-ui hover:bg-accent outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
                       selected && "bg-secondary hover:bg-secondary",
                     )}
                   >
@@ -703,7 +707,7 @@ function PomodoroActivity({ controller }: { controller: PomodoroController }) {
                   <div className="flex h-full w-2 items-end rounded-full bg-muted">
                     <div
                       className={cn(
-                        "w-full rounded-full transition-[height] duration-300 ease-out",
+                        "w-full rounded-full transition-[height] duration-base ease-out-cubic",
                         isToday ? "bg-primary" : "bg-foreground/25",
                       )}
                       style={{ height: `${height}%` }}

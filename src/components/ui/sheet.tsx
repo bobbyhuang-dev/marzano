@@ -18,20 +18,20 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(({ className, children, side = "right", ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-[200] bg-overlay backdrop-blur-[2px] data-[state=open]:animate-overlay-in" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-[200] bg-overlay backdrop-blur-[2px] data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         "fixed inset-y-0 z-[201] flex w-full max-w-md flex-col bg-background shadow-dialog dark:bg-popover",
         side === "left"
-          ? "left-0 data-[state=open]:animate-sheet-in-left"
-          : "right-0 data-[state=open]:animate-sheet-in",
+          ? "left-0 data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left"
+          : "right-0 data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out",
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 disabled:pointer-events-none">
+      <DialogPrimitive.Close className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 disabled:pointer-events-none">
         <X className="size-4" aria-hidden="true" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

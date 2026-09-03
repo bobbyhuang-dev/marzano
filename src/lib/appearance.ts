@@ -1,3 +1,5 @@
+import { crossfadeDocument } from "@/lib/motion";
+
 const ACCENT_STORAGE_KEY = "marzano.accent.v1";
 
 const ZOOM_STORAGE_KEY = "marzano.zoom.v1";
@@ -83,9 +85,18 @@ export function saveZoom(zoom: ZoomLevel) {
   }
 }
 
-/** Mirrors the pre-paint script in `index.html`. */
+/**
+ * Mirrors the pre-paint script in `index.html`, which is also why a repeat is
+ * a no-op rather than a crossfade: the script has set the attribute before
+ * React mounts, so only a change the reader made animates.
+ */
 export function applyAccent(accent: AccentId) {
-  document.documentElement.dataset.accent = accent;
+  const root = document.documentElement;
+
+  if (root.dataset.accent === accent) return;
+  crossfadeDocument(() => {
+    root.dataset.accent = accent;
+  });
 }
 
 /**

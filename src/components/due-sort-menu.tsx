@@ -1,4 +1,5 @@
 import { useCallback, useId, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { useMenuDismiss } from "@/hooks/use-menu-dismiss";
+import { popoverMotion } from "@/lib/motion";
 import type { DueSort } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
@@ -104,64 +106,68 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
         />
       </button>
 
-      {open ? (
-        <div
-          id={panelId}
-          role="radiogroup"
-          aria-label="Order tasks"
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left animate-popover-in overflow-hidden rounded-lg bg-popover shadow-popover"
-        >
-          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-            <span className="px-1 text-xs font-medium text-muted-foreground">
-              Order tasks
-            </span>
-          </div>
-          <ul className="py-1">
-            {SORT_OPTIONS.map((option) => {
-              const checked = option.id === value;
-              const OptionIcon = option.icon;
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            key="panel"
+            {...popoverMotion()}
+            id={panelId}
+            role="radiogroup"
+            aria-label="Order tasks"
+            className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left overflow-hidden rounded-lg bg-popover shadow-popover"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <span className="px-1 text-xs font-medium text-muted-foreground">
+                Order tasks
+              </span>
+            </div>
+            <ul className="py-1">
+              {SORT_OPTIONS.map((option) => {
+                const checked = option.id === value;
+                const OptionIcon = option.icon;
 
-              return (
-                <li key={option.id}>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={checked}
-                    onClick={() => select(option.id)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
-                  >
-                    <OptionIcon
-                      aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span
+                return (
+                  <li key={option.id}>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={checked}
+                      onClick={() => select(option.id)}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
+                    >
+                      <OptionIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block truncate",
+                            checked ? "font-medium text-foreground" : "text-foreground/85",
+                          )}
+                        >
+                          {option.label}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {option.description}
+                        </span>
+                      </span>
+                      <Check
+                        aria-hidden="true"
+                        strokeWidth={3}
                         className={cn(
-                          "block truncate",
-                          checked ? "font-medium text-foreground" : "text-foreground/85",
+                          "size-4 shrink-0 text-foreground transition-opacity duration-150 ease-out",
+                          checked ? "opacity-100" : "opacity-0",
                         )}
-                      >
-                        {option.label}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {option.description}
-                      </span>
-                    </span>
-                    <Check
-                      aria-hidden="true"
-                      strokeWidth={3}
-                      className={cn(
-                        "size-4 shrink-0 text-foreground transition-opacity duration-150 ease-out",
-                        checked ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

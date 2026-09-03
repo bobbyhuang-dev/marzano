@@ -97,7 +97,7 @@ function TagColorPicker({
               // The inset hairline keeps pale swatches from dissolving into the
               // dialog. It is a class, not an inline style, so the ring below
               // composes with it instead of being overwritten.
-              "relative flex aspect-square w-full items-center justify-center rounded-full shadow-swatch transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95",
+              "relative flex aspect-square w-full items-center justify-center rounded-full shadow-swatch transition-ui hover:scale-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95",
               // Survives focus because focus is an outline rather than a ring: arrowing
               // across the row moves the selection with it, so the two are always on the
               // same swatch and a second ring would only overwrite this one.
@@ -109,7 +109,7 @@ function TagColorPicker({
               aria-hidden="true"
               strokeWidth={3}
               className={cn(
-                "size-[45%] transition-opacity duration-150 ease-out",
+                "size-[45%] transition-ui",
                 selected ? "opacity-100" : "opacity-0",
               )}
               style={{ color: readableTextColor(color.hex) }}

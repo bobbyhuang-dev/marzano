@@ -29,13 +29,13 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         className={cn(
           // Same reason as the checkbox: the ring belongs on the track, not on the
           // invisible 2.75rem target around it.
-          "flex h-6 w-11 items-center rounded-full p-0.5 transition-[background-color,box-shadow] duration-200 ease-out group-focus-visible:ring-[3px] group-focus-visible:ring-ring/70",
+          "flex h-6 w-11 items-center rounded-full p-0.5 transition-ui group-focus-visible:ring-[3px] group-focus-visible:ring-ring/70",
           checked ? "bg-primary" : "bg-input",
         )}
       >
         <span
           className={cn(
-            "block size-5 rounded-full bg-background shadow-thumb transition-transform duration-200 ease-out",
+            "block size-5 rounded-full bg-background shadow-thumb transition-ui",
             checked ? "translate-x-5" : "translate-x-0",
           )}
         />

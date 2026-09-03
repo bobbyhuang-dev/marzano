@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Check, CircleCheckBig, Clock3, RotateCcw } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import { TagChipList } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
+import { useAnimating } from "@/hooks/use-animating";
 import {
   byMostRecentlyCompleted,
   completedTaskExpiry,
@@ -13,6 +15,7 @@ import {
   isRetentionEndingSoon,
   type Task,
 } from "@/lib/tasks";
+import { listRowMotion } from "@/lib/motion";
 import { formatFocusDuration } from "@/lib/pomodoro";
 import { resolveTags, type Tag } from "@/lib/tags";
 import { cn } from "@/lib/utils";
@@ -33,6 +36,86 @@ function useNow() {
   }, []);
 
   return now;
+}
+
+interface CompletedRowProps {
+  task: Task;
+  tagsById: Map<string, Tag>;
+  now: number;
+  onRestore: () => void;
+  onDelete: () => void;
+}
+
+function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRowProps) {
+  const animating = useAnimating();
+  const expiry = completedTaskExpiry(task);
+  const endingSoon = expiry !== null && isRetentionEndingSoon(expiry, now);
+
+  return (
+    // Padding on the inner box, not the row: the row's height is what
+    // animates when it is restored or deleted.
+    <motion.li
+      {...listRowMotion}
+      {...animating.handlers}
+      className={cn("relative", animating.active && "overflow-clip")}
+    >
+      <div className="flex items-start gap-3 py-3.5 sm:py-4">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        >
+          <Check strokeWidth={3} className="size-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium leading-6 text-foreground">
+            {task.title}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <p className="text-sm text-muted-foreground">
+              {task.completedAt
+                ? formatCompletedAt(task.completedAt, now)
+                : "Completed"}
+              {expiry !== null ? (
+                <>
+                  <span aria-hidden="true" className="px-1.5">
+                    ·
+                  </span>
+                  <span
+                    className={cn(endingSoon && "font-medium text-destructive")}
+                  >
+                    {formatRetentionLeft(expiry, now)}
+                  </span>
+                </>
+              ) : null}
+            </p>
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Clock3 className="size-4 shrink-0" aria-hidden="true" />
+              {task.focusedMs > 0
+                ? `${formatFocusDuration(task.focusedMs)} focused`
+                : "No focus time recorded"}
+            </p>
+            <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5 self-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Restore ${task.title}`}
+            title="Restore task"
+            onClick={onRestore}
+          >
+            <RotateCcw aria-hidden="true" />
+          </Button>
+          <DeleteTaskDialog
+            task={task}
+            onDelete={onDelete}
+            description={`This will delete “${task.title}” right away instead of waiting out the ${COMPLETED_RETENTION_DAYS} days. This action can’t be undone.`}
+          />
+        </div>
+      </div>
+    </motion.li>
+  );
 }
 
 interface CompletedTaskListProps {
@@ -80,74 +163,18 @@ function CompletedTaskList({
             className="-mt-3.5 divide-y divide-border sm:-mt-4"
             aria-label="Completed tasks"
           >
-            {completed.map((task) => {
-              const expiry = completedTaskExpiry(task);
-              const endingSoon =
-                expiry !== null && isRetentionEndingSoon(expiry, now);
-
-              return (
-                <li
+            <AnimatePresence initial={false}>
+              {completed.map((task) => (
+                <CompletedRow
                   key={task.id}
-                  className="flex items-start gap-3 py-3.5 sm:py-4"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                  >
-                    <Check strokeWidth={3} className="size-3.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-sm font-medium leading-6 text-foreground">
-                      {task.title}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                      <p className="text-sm text-muted-foreground">
-                        {task.completedAt
-                          ? formatCompletedAt(task.completedAt, now)
-                          : "Completed"}
-                        {expiry !== null ? (
-                          <>
-                            <span aria-hidden="true" className="px-1.5">
-                              ·
-                            </span>
-                            <span
-                              className={cn(
-                                endingSoon && "font-medium text-destructive",
-                              )}
-                            >
-                              {formatRetentionLeft(expiry, now)}
-                            </span>
-                          </>
-                        ) : null}
-                      </p>
-                      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Clock3 className="size-4 shrink-0" aria-hidden="true" />
-                        {task.focusedMs > 0
-                          ? `${formatFocusDuration(task.focusedMs)} focused`
-                          : "No focus time recorded"}
-                      </p>
-                      <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-0.5 self-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Restore ${task.title}`}
-                      title="Restore task"
-                      onClick={() => onRestore(task)}
-                    >
-                      <RotateCcw aria-hidden="true" />
-                    </Button>
-                    <DeleteTaskDialog
-                      task={task}
-                      onDelete={() => onDelete(task)}
-                      description={`This will delete “${task.title}” right away instead of waiting out the ${COMPLETED_RETENTION_DAYS} days. This action can’t be undone.`}
-                    />
-                  </div>
-                </li>
-              );
-            })}
+                  task={task}
+                  tagsById={tagsById}
+                  now={now}
+                  onRestore={() => onRestore(task)}
+                  onDelete={() => onDelete(task)}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </div>

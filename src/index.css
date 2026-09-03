@@ -44,12 +44,29 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --animate-dialog-in: dialog-in 180ms cubic-bezier(0.215, 0.61, 0.355, 1);
-  --animate-overlay-in: overlay-in 180ms cubic-bezier(0.215, 0.61, 0.355, 1);
-  --animate-sheet-in: sheet-in 220ms cubic-bezier(0.215, 0.61, 0.355, 1);
-  --animate-sheet-in-left: sheet-in-left 220ms cubic-bezier(0.215, 0.61, 0.355, 1);
-  --animate-popover-in: popover-in 140ms cubic-bezier(0.215, 0.61, 0.355, 1);
-  --animate-sidebar-label-in: sidebar-label-in 80ms ease-out 200ms both;
+  /*
+   * Motion is one curve at two lengths: `fast` for anything answering the
+   * pointer (hover, press, colour) and for every exit, `base` for anything
+   * arriving or moving. `src/lib/motion.ts` restates these three values for
+   * the JS animations, so a change here has to be made there too.
+   */
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 200ms;
+
+  /* The exits carry `both`: Radix keeps a closing overlay mounted until its
+     animation ends, and the last frame has to hold until then. The entrances
+     deliberately do not, so no transform outlives them on the element. */
+  --animate-dialog-in: dialog-in var(--transition-duration-base) var(--ease-out-cubic);
+  --animate-dialog-out: dialog-out var(--transition-duration-fast) var(--ease-out-cubic) both;
+  --animate-overlay-in: overlay-in var(--transition-duration-base) var(--ease-out-cubic);
+  --animate-overlay-out: overlay-out var(--transition-duration-fast) var(--ease-out-cubic) both;
+  --animate-sheet-in: sheet-in var(--transition-duration-base) var(--ease-out-cubic);
+  --animate-sheet-out: sheet-out var(--transition-duration-fast) var(--ease-out-cubic) both;
+  --animate-sheet-in-left: sheet-in-left var(--transition-duration-base) var(--ease-out-cubic);
+  --animate-sheet-out-left: sheet-out-left var(--transition-duration-fast) var(--ease-out-cubic) both;
+  --animate-view-in: view-in var(--transition-duration-base) var(--ease-out-cubic);
+  --animate-fade-in: fade-in var(--transition-duration-base) var(--ease-out-cubic);
 
   @keyframes dialog-in {
     from {
@@ -62,12 +79,32 @@
     }
   }
 
+  @keyframes dialog-out {
+    from {
+      opacity: 1;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
+
   @keyframes overlay-in {
     from {
       opacity: 0;
     }
     to {
       opacity: 1;
+    }
+  }
+
+  @keyframes overlay-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
     }
   }
 
@@ -80,6 +117,15 @@
     }
   }
 
+  @keyframes sheet-out {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
   @keyframes sheet-in-left {
     from {
       transform: translateX(-100%);
@@ -89,18 +135,27 @@
     }
   }
 
-  @keyframes popover-in {
+  @keyframes sheet-out-left {
     from {
-      opacity: 0;
-      transform: translateY(-0.25rem) scale(0.98);
+      transform: translateX(0);
     }
     to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateX(-100%);
     }
   }
 
-  @keyframes sidebar-label-in {
+  @keyframes view-in {
+    from {
+      opacity: 0;
+      translate: 0 0.25rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @keyframes fade-in {
     from {
       opacity: 0;
     }
@@ -108,6 +163,37 @@
       opacity: 1;
     }
   }
+}
+
+/*
+ * The one transition for anything that answers the pointer or a state change.
+ * It names the individual transform properties because Tailwind v4's scale-*,
+ * rotate-* and translate-* write those, not `transform` -- a list that only
+ * says `transform` lets a pressed button snap. Never put it on an element that
+ * `motion` animates: the two would fight over the same frame.
+ */
+@utility transition-ui {
+  transition-property:
+    color, background-color, border-color, outline-color, text-decoration-color,
+    fill, stroke, opacity, box-shadow, transform, translate, scale, rotate;
+  transition-duration: var(--transition-duration-fast);
+  transition-timing-function: var(--ease-out-cubic);
+}
+
+/*
+ * The Pomodoro dial's arc is a clock hand, not a control: the dash offset
+ * catches up to each one-second tick over 700ms linear so it never stalls
+ * between ticks, while its colour and the paused dimming answer at the house
+ * speed. One utility rather than three classes because `transition-[...]`
+ * also writes the duration, and which of two utilities wins a longhand would
+ * depend on the order Tailwind emits them in.
+ */
+@utility transition-dial {
+  transition-property: stroke-dashoffset, stroke, opacity;
+  transition-duration:
+    700ms, var(--transition-duration-base), var(--transition-duration-base);
+  transition-timing-function:
+    linear, var(--ease-out-cubic), var(--ease-out-cubic);
 }
 
 @layer base {
@@ -361,12 +447,42 @@
   }
 }
 
+/*
+ * Only while lib/theme.ts or lib/appearance.ts changes the palette under the
+ * reader (`crossfadeDocument` in lib/motion.ts sets and clears the attribute).
+ * index.html has already painted the stored theme by the time React mounts,
+ * so nothing here runs on load. Unlayered on purpose: it has to outrank the
+ * utilities' own transitions for the 200ms it is on.
+ */
+:root[data-theme-transition],
+:root[data-theme-transition] *,
+:root[data-theme-transition] *::before,
+:root[data-theme-transition] *::after {
+  transition-property:
+    color, background-color, border-color, outline-color, fill, stroke,
+    box-shadow;
+  transition-duration: var(--transition-duration-base);
+  /* Zeroed, or the sidebar labels' reveal delay would hold their text on
+     the old colour for a beat after the rest of the page has moved. */
+  transition-delay: 0s;
+  transition-timing-function: var(--ease-out-cubic);
+}
+
+/*
+ * Near-zero rather than `none`, so `both` fills still land on their last
+ * frame and `animationend` still fires -- Radix waits for it before it
+ * unmounts a closed dialog. `!important` because the crossfade rule above
+ * and the utilities would otherwise outrank this.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    scroll-behavior: auto;
-    animation: none;
-    transition: none;
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }
