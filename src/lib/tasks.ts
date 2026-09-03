@@ -1,4 +1,9 @@
-import { endOfDay, format, formatDistanceToNowStrict } from "date-fns";
+import {
+  differenceInCalendarDays,
+  endOfDay,
+  format,
+  formatDistanceToNowStrict,
+} from "date-fns";
 
 import {
   isPresent,
@@ -349,6 +354,28 @@ export function isTaskDue(task: Task, now = Date.now()): boolean {
 
   const deadline = dueAtToDeadline(task.dueAt);
   return deadline !== null && deadline <= now;
+}
+
+/**
+ * How close a due date is, in the steps a reader plans by. `overdue` agrees
+ * with `isTaskDue`, so a day-only task stays `today` until the day is out and
+ * a timed one turns over at its time; the rest is counted in local calendar
+ * days, so a task due tomorrow morning is `tomorrow` at eleven at night too.
+ */
+export type DueUrgency = "overdue" | "today" | "tomorrow" | "soon" | "later";
+
+/** Days ahead that still count as `soon`: the coming week. */
+const SOON_DAYS = 7;
+
+export function dueUrgency(value: string, now = Date.now()): DueUrgency {
+  const deadline = dueAtToDeadline(value);
+  if (deadline === null) return "later";
+  if (deadline <= now) return "overdue";
+
+  const days = differenceInCalendarDays(dueAtToDate(value)!, now);
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return days <= SOON_DAYS ? "soon" : "later";
 }
 
 /** How the open task list is ordered: as it was entered, or by deadline. */

@@ -1,8 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import { format, isSameDay, startOfDay, subDays } from "date-fns";
 import {
-  CalendarClock,
-  CalendarOff,
   Check,
   ListTodo,
   Pause,
@@ -16,6 +14,7 @@ import {
 import { EmptyPanel } from "@/components/empty-panel";
 import { SettingToggle } from "@/components/setting-toggle";
 import { TagChip, TagChipList } from "@/components/tag-chip";
+import { DueDateText, TaskDueDate } from "@/components/task-due-date";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -52,7 +51,7 @@ import {
   type PomodoroSessionRecord,
   type PomodoroStatus,
 } from "@/lib/pomodoro";
-import { formatDueDate, isActiveTask, type Task } from "@/lib/tasks";
+import { isActiveTask, type Task } from "@/lib/tasks";
 import { resolveTags, type Tag } from "@/lib/tags";
 import { cn, focusDialogTitleOnTouch } from "@/lib/utils";
 
@@ -228,6 +227,7 @@ function TaskPickerDialog({
   onSelect: (taskId: string) => void;
   running: boolean;
 }) {
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] max-w-lg grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
@@ -282,9 +282,7 @@ function TaskPickerDialog({
                         {task.title}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                        <span className="tabular-nums">
-                          {task.dueAt ? formatDueDate(task.dueAt) : "No due date"}
-                        </span>
+                        <DueDateText dueAt={task.dueAt} />
                         <span className="flex flex-wrap items-center gap-1.5">
                           {resolveTags(task.tagIds, tagsById).map((tag) => (
                             <TagChip key={tag.id} tag={tag} />
@@ -903,18 +901,7 @@ function PomodoroPage({
                 {selectedTask.title}
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  {selectedTask.dueAt ? (
-                    <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
-                  ) : (
-                    <CalendarOff aria-hidden="true" className="size-4 shrink-0" />
-                  )}
-                  <span className="break-words tabular-nums">
-                    {selectedTask.dueAt
-                      ? formatDueDate(selectedTask.dueAt)
-                      : "No due date"}
-                  </span>
-                </p>
+                <TaskDueDate task={selectedTask} />
                 {selectedFocusedMs > 0 ? (
                   <p className="text-sm tabular-nums text-muted-foreground">
                     {formatFocusDuration(selectedFocusedMs)} focused

@@ -18,6 +18,10 @@
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
 
+  --color-due-today: hsl(var(--due-today));
+  --color-due-tomorrow: hsl(var(--due-tomorrow));
+  --color-due-soon: hsl(var(--due-soon));
+
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
 
@@ -214,6 +218,13 @@
     --accent-foreground: 0 0% 8%;
     --destructive: 0 66% 45%;
     --destructive-foreground: 0 0% 98%;
+    /* A due date's colour says how near it is: overdue is `destructive`, far
+       off is `muted-foreground`, and these three sit in between. All are text
+       on the page, so each has to clear 4.5:1 on its own; the tomorrow step
+       is amber rather than yellow because yellow text never does on white. */
+    --due-today: 142 60% 30%;
+    --due-tomorrow: 32 90% 34%;
+    --due-soon: 262 55% 48%;
     --border: 0 0% 88%;
     --input: 0 0% 82%;
     --ring: 0 0% 20%;
@@ -255,6 +266,9 @@
        page while still carrying white button text. */
     --destructive: 0 70% 58%;
     --destructive-foreground: 0 0% 100%;
+    --due-today: 142 48% 52%;
+    --due-tomorrow: 36 90% 58%;
+    --due-soon: 262 75% 74%;
     --border: 0 0% 20%;
     --input: 0 0% 28%;
     --ring: 0 0% 75%;

@@ -25,7 +25,7 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 
 **Tasks** — Add a task with an optional due date and tags, edit or delete it inline, and check it off. Completing a task raises a toast with an Undo action. Drag a row by its grip, or move it with the arrow keys, to set the order by hand.
 
-**Due dates and reminders** — A due date is either a day (`Fri, Mar 14`) or a day and a time; day-only tasks come due at the end of that day. When a task falls due the app raises a reminder, including in a tab left open or in the background. The picker has Tomorrow and Next week shortcuts and an optional time.
+**Due dates and reminders** — A due date is either a day (`Fri, Mar 14`) or a day and a time; day-only tasks come due at the end of that day. The date is coloured by how near it is: red once it has passed, green today, amber tomorrow, purple within the week, and grey beyond that. When a task falls due the app raises a reminder, including in a tab left open or in the background. The picker has Tomorrow and Next week shortcuts and an optional time.
 
 **Calendar** — Open tasks laid out on the days they are due, a week or a month at a time. Pick a day to see its tasks in a list where they can be completed, edited, and deleted as on the task page, or add a task straight onto that day. The grid is one tab stop: arrow keys, Home/End and PageUp/PageDown move through it.
 

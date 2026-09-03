@@ -1,10 +1,4 @@
-import {
-  BellRing,
-  CalendarClock,
-  CalendarOff,
-  GripVertical,
-  PencilLine,
-} from "lucide-react";
+import { GripVertical, PencilLine } from "lucide-react";
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import {
   useId,
@@ -21,45 +15,19 @@ import {
 } from "@/components/task-form-dialog";
 import { TagChipList } from "@/components/tag-chip";
 import { type TagValues } from "@/components/tag-form-dialog";
+import { TaskDueDate } from "@/components/task-due-date";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAnimating } from "@/hooks/use-animating";
 import { listRowMotion } from "@/lib/motion";
 import {
   canReorderTask,
-  formatDueDate,
-  isTaskDue,
   reorderBounds,
   type DueSort,
   type Task,
 } from "@/lib/tasks";
 import { resolveTags, type Tag } from "@/lib/tags";
 import { cn } from "@/lib/utils";
-
-function TaskDueDate({ task }: { task: Task }) {
-  const due = isTaskDue(task);
-
-  return (
-    <p
-      className={cn(
-        "flex items-center gap-1.5 text-sm text-muted-foreground",
-        due && "font-medium text-destructive",
-      )}
-    >
-      {due ? (
-        <BellRing aria-hidden="true" className="size-4 shrink-0" />
-      ) : task.dueAt ? (
-        <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
-      ) : (
-        <CalendarOff aria-hidden="true" className="size-4 shrink-0" />
-      )}
-      <span className="break-words tabular-nums">
-        {task.dueAt ? formatDueDate(task.dueAt) : "No due date"}
-      </span>
-      {due ? <span className="sr-only">, due now</span> : null}
-    </p>
-  );
-}
 
 /**
  * Lets the reader rearrange the list. `sort` decides how far a task may go:
