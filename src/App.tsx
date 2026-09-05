@@ -41,6 +41,10 @@ import {
   PomodoroPage,
   PomodoroSettingsDialog,
 } from "@/components/pomodoro-page";
+import {
+  SubtaskPickerDialog,
+  SubtaskSelectTrigger,
+} from "@/components/subtask-picker-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { TagFilterMenu } from "@/components/tag-filter-menu";
 import { type TagValues } from "@/components/tag-form-dialog";
@@ -97,6 +101,7 @@ import {
   saveTasks,
   setSubtaskCompleted,
   sortTasksByDue,
+  type Subtask,
   type Task,
   touchTask,
 } from "@/lib/tasks";
@@ -181,6 +186,7 @@ function App() {
   const [title, setTitle] = useState("");
   const [dueValue, setDueValue] = useState<string | null>(null);
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
+  const [draftSubtasks, setDraftSubtasks] = useState<Subtask[]>([]);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -315,11 +321,12 @@ function App() {
       dueAt: dueValue,
       tagIds: draftTagIds,
       description: "",
-      subtasks: [],
+      subtasks: draftSubtasks,
     });
     setTitle("");
     setDueValue(null);
     setDraftTagIds([]);
+    setDraftSubtasks([]);
     setError("");
     titleInputRef.current?.focus();
   };
@@ -662,9 +669,9 @@ function App() {
                       Add task
                     </Button>
                   </div>
-                  {/* Both are slots the shape of the field above them, muted until
-                      filled: they say "optional" without a word of copy. */}
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  {/* All three are slots the shape of the field above them, muted
+                      until filled: they say "optional" without a word of copy. */}
+                  <div className="grid gap-3 sm:grid-cols-3">
                     <DueDatePickerDialog
                       value={dueValue}
                       onValueChange={setDueValue}
@@ -700,6 +707,11 @@ function App() {
                       onValueChange={setDraftTagIds}
                       onCreateTag={addTag}
                       trigger={<TagSelectTrigger tags={draftTags} />}
+                    />
+                    <SubtaskPickerDialog
+                      value={draftSubtasks}
+                      onValueChange={setDraftSubtasks}
+                      trigger={<SubtaskSelectTrigger subtasks={draftSubtasks} />}
                     />
                   </div>
                   {error ? (

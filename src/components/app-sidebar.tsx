@@ -101,7 +101,7 @@ function SidebarFooterButton({
     <button
       type="button"
       title={label}
-      className={cn(FOOTER_BUTTON, collapsed && "w-11 justify-center px-0", className)}
+      className={cn(FOOTER_BUTTON, collapsed && "justify-center px-0", className)}
       {...props}
     >
       <span className="relative shrink-0">
@@ -130,7 +130,7 @@ interface SidebarThemeToggleProps {
 }
 
 /**
- * Collapsed, the rail is 44px wide and cycling is the only shape that fits, so
+ * Collapsed, the row is 42px wide and cycling is the only shape that fits, so
  * the icon has to carry the whole state: it swaps with a quarter turn, which
  * says the press landed and which way the choice moved. Without it the button
  * changes glyph between frames and reads as a redraw rather than an answer.
@@ -149,7 +149,7 @@ function CyclingThemeButton({
       onClick={() => onThemeChange(nextTheme(theme))}
       aria-label={description}
       title={description}
-      className={cn(FOOTER_BUTTON, "w-11 justify-center px-0 animate-fade-in")}
+      className={cn(FOOTER_BUTTON, "justify-center px-0 animate-fade-in")}
     >
       <span className="relative flex size-[1.125rem] shrink-0 items-center justify-center">
         <AnimatePresence initial={false}>
@@ -205,8 +205,8 @@ function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
   return (
     <div
       className={cn(
-        "flex min-h-9 items-center justify-between gap-1 text-muted-foreground/70",
-        collapsed ? "justify-center" : "pl-3",
+        "flex min-h-9 shrink-0 items-center justify-between gap-1 text-muted-foreground/70",
+        collapsed ? "justify-center px-3 pb-3" : "px-3 pb-3 pl-6",
       )}
     >
       {!collapsed ? (
@@ -241,12 +241,7 @@ function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
 
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
-    <div
-      className={cn(
-        "flex h-16 shrink-0 items-center gap-2.5 px-4",
-        collapsed && "justify-center px-0",
-      )}
-    >
+    <div className="flex h-16 shrink-0 items-center gap-2.5 px-4">
       <BrandMark className="size-8 text-primary" />
       <span
         className={cn(
@@ -272,10 +267,7 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
   return (
     <nav
       aria-label="Views"
-      className={cn(
-        "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3",
-        collapsed && "items-center px-2",
-      )}
+      className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3"
     >
       {items.map((item) => {
         const active = item.id === activeId;
@@ -290,7 +282,7 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
             title={collapsed ? item.label : undefined}
             className={cn(
               "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-ui outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
-              collapsed && "w-11 flex-col justify-center gap-0.5 px-0",
+              collapsed && "flex-col justify-center gap-0.5 px-0",
               active
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -390,14 +382,17 @@ function AppSidebar({
         data-collapsed={collapsed ? "" : undefined}
         className={cn(
           "group/rail sticky top-0 hidden h-dvh shrink-0 self-start overflow-hidden border-r border-border bg-card transition-[width] duration-base ease-out-cubic lg:block",
-          collapsed ? "w-[4.5rem]" : "w-64",
+          collapsed ? "w-[4.125rem]" : "w-64",
         )}
       >
         {/* Laid out at the width it is heading for, and only revealed or
             covered by the rail's moving edge: text that reflowed with the
-            width would truncate its way across the move. */}
+            width would truncate its way across the move. The rail is 4.125rem
+            so that the same 0.75rem padding on both layouts leaves a 2.625rem
+            row whose centred icon lands where the wide row's left-aligned one
+            already is: the edge moves, the icons never do. */}
         <div
-          className={cn("flex h-full flex-col", narrow ? "w-[4.5rem]" : "w-64")}
+          className={cn("flex h-full flex-col", narrow ? "w-[4.125rem]" : "w-64")}
         >
           <SidebarBrand collapsed={narrow} />
           <SidebarNav
@@ -406,12 +401,8 @@ function AppSidebar({
             onSelect={onSelect}
             collapsed={narrow}
           />
-          <div
-            className={cn(
-              "flex shrink-0 flex-col gap-1 border-t border-border p-3",
-              narrow && "items-center px-2",
-            )}
-          >
+          <SidebarProjectLinks collapsed={narrow} />
+          <div className="flex shrink-0 flex-col gap-1 border-t border-border p-3">
             {footerActions?.(narrow)}
             <SidebarThemeToggle
               theme={theme}
@@ -423,7 +414,7 @@ function AppSidebar({
               onClick={toggleCollapsed}
               aria-expanded={!collapsed}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className={cn(FOOTER_BUTTON, narrow && "w-11 justify-center px-0")}
+              className={cn(FOOTER_BUTTON, narrow && "justify-center px-0")}
             >
               {collapsed ? (
                 <PanelLeft className="size-[1.125rem] shrink-0" aria-hidden="true" />
@@ -434,7 +425,6 @@ function AppSidebar({
                 {collapsed ? "Expand sidebar" : "Collapse sidebar"}
               </span>
             </button>
-            <SidebarProjectLinks collapsed={narrow} />
           </div>
         </div>
       </aside>
@@ -455,6 +445,7 @@ function AppSidebar({
               onMenuOpenChange(false);
             }}
           />
+          <SidebarProjectLinks collapsed={false} />
           <div className="flex shrink-0 flex-col gap-1 border-t border-border p-3">
             {footerActions?.(false)}
             <SidebarThemeToggle
@@ -462,7 +453,6 @@ function AppSidebar({
               onThemeChange={onThemeChange}
               collapsed={false}
             />
-            <SidebarProjectLinks collapsed={false} />
           </div>
         </SheetContent>
       </Sheet>

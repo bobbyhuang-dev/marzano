@@ -25,7 +25,7 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 
 **Tasks** — Add a task with an optional due date and tags, edit or delete it inline, and check it off. Completing a task raises a toast with an Undo action. Drag a row by its grip, or move it with the arrow keys, to set the order by hand.
 
-**Descriptions and subtasks** — Add Markdown notes and a single-level checklist in the task editor. Each subtask has its own name, description, and completion state. Expand a task to read its notes and check off steps; the progress count updates immediately. Editor changes are saved together, and Cancel discards the draft. Parent and child completion are independent: completing or restoring a task preserves its checklist, which remains readable in Completed.
+**Descriptions and subtasks** — Add Markdown notes and a single-level checklist in the task editor. Each subtask has its own name and completion state. Expand a task to read its notes and check off steps; the progress count updates immediately. Editor changes are saved together, and Cancel discards the draft. Parent and child completion are independent: completing or restoring a task preserves its checklist, which remains readable in Completed.
 
 **Due dates and reminders** — A due date is either a day (`Fri, Mar 14`) or a day and a time; day-only tasks come due at the end of that day. The date is coloured by how near it is: red once it has passed, green today, amber tomorrow, purple within the week, and grey beyond that. When a task falls due the app raises a reminder, including in a tab left open or in the background. The picker has Tomorrow and Next week shortcuts and an optional time.
 

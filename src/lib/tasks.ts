@@ -18,7 +18,6 @@ import {
 export interface Subtask {
   id: string;
   title: string;
-  description: string;
   completedAt: string | null;
 }
 
@@ -83,8 +82,6 @@ export function toSubtask(value: unknown): Subtask | null {
   return {
     id: candidate.id,
     title: candidate.title,
-    description:
-      typeof candidate.description === "string" ? candidate.description : "",
     completedAt: isIsoInstant(candidate.completedAt) ? candidate.completedAt : null,
   };
 }
@@ -103,7 +100,6 @@ export function createSubtask(title = ""): Subtask {
   return {
     id: crypto.randomUUID(),
     title: title.trim(),
-    description: "",
     completedAt: null,
   };
 }

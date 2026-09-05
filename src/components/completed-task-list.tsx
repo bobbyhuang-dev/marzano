@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { Check, CircleCheckBig, Clock3, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-import { TaskDetails } from "@/components/task-details";
+import {
+  TaskDetails,
+  TaskDetailsContent,
+  TaskDetailsTrigger,
+} from "@/components/task-details";
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import { TagChipList } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
@@ -60,6 +64,7 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
       {...animating.handlers}
       className={cn("relative", animating.active && "overflow-clip")}
     >
+      <TaskDetails task={task}>
       <div className="flex items-start gap-3 py-3.5 sm:py-4">
         <span
           aria-hidden="true"
@@ -96,6 +101,7 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
                 : "No focus time recorded"}
             </p>
             <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
+            <TaskDetailsTrigger task={task} />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5 self-center">
@@ -115,7 +121,9 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
           />
         </div>
       </div>
-      <TaskDetails task={task} />
+      {/* Indented past the check mark and gap so it sits under the title. */}
+      <TaskDetailsContent task={task} className="pl-8" />
+      </TaskDetails>
     </motion.li>
   );
 }

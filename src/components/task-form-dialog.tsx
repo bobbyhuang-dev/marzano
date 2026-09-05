@@ -1,9 +1,8 @@
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
-import { CalendarClock, CalendarPlus, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarPlus, Plus } from "lucide-react";
 
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DescriptionEditor } from "@/components/markdown-description";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
   FieldError,
@@ -12,6 +11,7 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import { SubtaskFields } from "@/components/subtask-fields";
 import { type TagValues } from "@/components/tag-form-dialog";
 import {
   TagPickerDialog,
@@ -248,92 +248,21 @@ function TaskFormDialog({
                       Break this task into small, checkable steps.
                     </p>
                   ) : null}
-                  {subtasks.map((subtask, index) => {
-                    const subtaskFieldId = `${fieldId}-${subtask.id}`;
-                    const invalid = invalidSubtaskId === subtask.id;
-                    return (
-                      <FieldGroup
-                        key={subtask.id}
-                        className="gap-3 rounded-md border border-border p-3"
-                      >
-                        <div className="flex items-start gap-1">
-                          <Checkbox
-                            checked={subtask.completedAt !== null}
-                            onCheckedChange={(checked) =>
-                              updateSubtask(subtask.id, {
-                                completedAt: checked
-                                  ? new Date().toISOString()
-                                  : null,
-                              })
-                            }
-                            aria-label={`Mark subtask ${index + 1} as ${subtask.completedAt ? "incomplete" : "complete"}`}
-                          />
-                          <Field className="flex-1" data-invalid={invalid}>
-                            <FieldLabel
-                              className="sr-only"
-                              htmlFor={subtaskFieldId}
-                            >
-                              Subtask {index + 1} name
-                            </FieldLabel>
-                            <Input
-                              id={subtaskFieldId}
-                              name={`subtask-${subtask.id}`}
-                              value={subtask.title}
-                              onChange={(event) =>
-                                updateSubtask(subtask.id, {
-                                  title: event.target.value,
-                                })
-                              }
-                              placeholder="What is the next step?"
-                              autoFocus={!subtask.title}
-                              autoComplete="off"
-                              aria-invalid={invalid}
-                              aria-describedby={
-                                invalid ? `${subtaskFieldId}-error` : undefined
-                              }
-                            />
-                            {invalid ? (
-                              <FieldError id={`${subtaskFieldId}-error`}>
-                                Enter a subtask name.
-                              </FieldError>
-                            ) : null}
-                          </Field>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Delete subtask ${index + 1}`}
-                            onClick={() =>
-                              setSubtasks((current) =>
-                                current.filter(
-                                  (item) => item.id !== subtask.id,
-                                ),
-                              )
-                            }
-                          >
-                            <Trash2 aria-hidden="true" />
-                          </Button>
-                        </div>
-                        <details>
-                          <summary className="cursor-pointer rounded-md py-2 text-sm text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70">
-                            {subtask.description.trim()
-                              ? "Edit description"
-                              : "Add description"}
-                          </summary>
-                          {open ? (
-                            <DescriptionEditor
-                              value={subtask.description}
-                              onChange={(value) =>
-                                updateSubtask(subtask.id, {
-                                  description: value,
-                                })
-                              }
-                              label={`Subtask ${index + 1} description`}
-                            />
-                          ) : null}
-                        </details>
-                      </FieldGroup>
-                    );
-                  })}
+                  {subtasks.map((subtask, index) => (
+                    <SubtaskFields
+                      key={subtask.id}
+                      subtask={subtask}
+                      index={index}
+                      idPrefix={fieldId}
+                      invalid={invalidSubtaskId === subtask.id}
+                      onChange={(changes) => updateSubtask(subtask.id, changes)}
+                      onDelete={() =>
+                        setSubtasks((current) =>
+                          current.filter((item) => item.id !== subtask.id),
+                        )
+                      }
+                    />
+                  ))}
                   <Button
                     variant="outline"
                     className="self-start"

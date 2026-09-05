@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 
-import { TaskDetails } from "@/components/task-details";
+import {
+  TaskDetails,
+  TaskDetailsContent,
+  TaskDetailsTrigger,
+} from "@/components/task-details";
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import {
   TaskFormDialog,
@@ -120,6 +124,7 @@ function TaskItem({
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <TaskDueDate task={task} />
           <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
+          <TaskDetailsTrigger task={task} />
         </div>
       </div>
       {/* The checkbox tracks the title's first line, but the actions belong to
@@ -158,10 +163,15 @@ function TaskItem({
   // what animates as it joins or leaves the list, and padding on it would be
   // left standing at height zero.
   const row = (
-    <div>
+    <TaskDetails task={task}>
       <div className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">{content}</div>
-      <TaskDetails task={task} onSubtaskComplete={onSubtaskComplete} />
-    </div>
+      {/* Indented past the checkbox and gap so it sits under the title. */}
+      <TaskDetailsContent
+        task={task}
+        className="pl-10 sm:pl-11"
+        onSubtaskComplete={onSubtaskComplete}
+      />
+    </TaskDetails>
   );
 
   if (!reorderable) {
