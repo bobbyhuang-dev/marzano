@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { TaskDetails } from "@/components/task-details";
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import {
   TaskFormDialog,
@@ -74,6 +75,7 @@ interface TaskItemProps {
   tags: Tag[];
   tagsById: Map<string, Tag>;
   onComplete: () => void;
+  onSubtaskComplete: (id: string, completed: boolean) => void;
   onSave: (changes: TaskChanges) => void;
   onDelete: () => void;
   onCreateTag: (values: TagValues) => Tag;
@@ -91,6 +93,7 @@ function TaskItem({
   tags,
   tagsById,
   onComplete,
+  onSubtaskComplete,
   onSave,
   onDelete,
   onCreateTag,
@@ -155,7 +158,10 @@ function TaskItem({
   // what animates as it joins or leaves the list, and padding on it would be
   // left standing at height zero.
   const row = (
-    <div className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">{content}</div>
+    <div>
+      <div className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">{content}</div>
+      <TaskDetails task={task} onSubtaskComplete={onSubtaskComplete} />
+    </div>
   );
 
   if (!reorderable) {
@@ -203,6 +209,7 @@ interface TaskListProps {
   label: string;
   empty: ReactNode;
   onComplete: (task: Task) => void;
+  onSubtaskComplete: (task: Task, id: string, completed: boolean) => void;
   onSave: (task: Task, changes: TaskChanges) => void;
   onDelete: (task: Task) => void;
   onCreateTag: (values: TagValues) => Tag;
@@ -217,6 +224,7 @@ function TaskList({
   label,
   empty,
   onComplete,
+  onSubtaskComplete,
   onSave,
   onDelete,
   onCreateTag,
@@ -292,6 +300,7 @@ function TaskList({
       tags={tags}
       tagsById={tagsById}
       onComplete={() => onComplete(task)}
+      onSubtaskComplete={(id, completed) => onSubtaskComplete(task, id, completed)}
       onSave={(changes) => onSave(task, changes)}
       onDelete={() => onDelete(task)}
       onCreateTag={onCreateTag}

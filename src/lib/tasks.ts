@@ -14,9 +14,20 @@ import {
   touch,
 } from "@/lib/sync";
 
+/** A single level of checklist items, saved and merged with their parent. */
+export interface Subtask {
+  id: string;
+  title: string;
+  description: string;
+  completedAt: string | null;
+}
+
 export interface Task extends SyncMeta {
   id: string;
   title: string;
+  /** Markdown source, including meaningful whitespace. */
+  description: string;
+  subtasks: Subtask[];
   /**
    * Either a full ISO instant when a time was picked, or a `yyyy-MM-dd` day when
    * the task is only due on that date. Day-only tasks come due at the end of it.
@@ -64,6 +75,57 @@ function isNonnegativeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
+export function toSubtask(value: unknown): Subtask | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<Subtask>;
+  if (!isNonEmptyString(candidate.id)) return null;
+  if (typeof candidate.title !== "string" || !candidate.title.trim()) return null;
+  return {
+    id: candidate.id,
+    title: candidate.title,
+    description:
+      typeof candidate.description === "string" ? candidate.description : "",
+    completedAt: isIsoInstant(candidate.completedAt) ? candidate.completedAt : null,
+  };
+}
+
+function toSubtasks(value: unknown): Subtask[] {
+  if (!Array.isArray(value)) return [];
+  const ids = new Set<string>();
+  return value.map(toSubtask).filter((subtask): subtask is Subtask => {
+    if (!subtask || ids.has(subtask.id)) return false;
+    ids.add(subtask.id);
+    return true;
+  });
+}
+
+export function createSubtask(title = ""): Subtask {
+  return {
+    id: crypto.randomUUID(),
+    title: title.trim(),
+    description: "",
+    completedAt: null,
+  };
+}
+
+/** Update only the chosen item on the current parent, preserving unrelated edits. */
+export function setSubtaskCompleted(
+  task: Task,
+  subtaskId: string,
+  completed: boolean,
+): Task {
+  const subtask = task.subtasks.find((item) => item.id === subtaskId);
+  if (!isActiveTask(task) || !subtask || Boolean(subtask.completedAt) === completed) {
+    return task;
+  }
+  const completedAt = completed ? nowIso() : null;
+  return touchTask(task, {
+    subtasks: task.subtasks.map((item) =>
+      item.id === subtaskId ? { ...item, completedAt } : item,
+    ),
+  });
+}
+
 /**
  * Reads one stored record. Fields saved by older versions -- or corrupted ones --
  * fall back to their empty value rather than dropping the whole task; only a
@@ -80,6 +142,9 @@ export function toTask(value: unknown): Task | null {
     ...toSyncMeta(candidate),
     id: candidate.id,
     title: candidate.title,
+    description:
+      typeof candidate.description === "string" ? candidate.description : "",
+    subtasks: toSubtasks(candidate.subtasks),
     dueAt:
       typeof candidate.dueAt === "string" && dueAtToDate(candidate.dueAt)
         ? candidate.dueAt
@@ -129,10 +194,14 @@ export function createTask(
   title: string,
   dueAt: string | null,
   tagIds: string[] = [],
+  description = "",
+  subtasks: Subtask[] = [],
 ): Task {
   return {
     id: crypto.randomUUID(),
     title: title.trim(),
+    description,
+    subtasks,
     dueAt,
     remindedAt: null,
     completedAt: null,

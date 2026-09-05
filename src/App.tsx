@@ -95,6 +95,7 @@ import {
   reorderTasks,
   saveDueSort,
   saveTasks,
+  setSubtaskCompleted,
   sortTasksByDue,
   type Task,
   touchTask,
@@ -285,10 +286,16 @@ function App() {
   };
 
   /** Shared by the form at the top of the task page and the calendar's dialog. */
-  const addTask = ({ title: taskTitle, dueAt, tagIds }: TaskChanges) => {
+  const addTask = ({
+    title: taskTitle,
+    dueAt,
+    tagIds,
+    description,
+    subtasks,
+  }: TaskChanges) => {
     setTasks((currentTasks) => [
       ...currentTasks,
-      createTask(taskTitle, dueAt, tagIds),
+      createTask(taskTitle, dueAt, tagIds, description, subtasks),
     ]);
     setStatusMessage(`Added ${taskTitle}.`);
   };
@@ -303,7 +310,13 @@ function App() {
       return;
     }
 
-    addTask({ title: trimmedTitle, dueAt: dueValue, tagIds: draftTagIds });
+    addTask({
+      title: trimmedTitle,
+      dueAt: dueValue,
+      tagIds: draftTagIds,
+      description: "",
+      subtasks: [],
+    });
     setTitle("");
     setDueValue(null);
     setDraftTagIds([]);
@@ -352,6 +365,15 @@ function App() {
       ),
     );
     setStatusMessage(`Updated ${changes.title}.`);
+  };
+
+  const completeSubtask = (taskId: string, subtaskId: string, completed: boolean) => {
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === taskId ? setSubtaskCompleted(task, subtaskId, completed) : task,
+      ),
+    );
+    setStatusMessage(completed ? "Subtask completed." : "Subtask marked incomplete.");
   };
 
   const deleteTask = (task: Task) => {
@@ -760,6 +782,9 @@ function App() {
                       )
                     }
                     onComplete={completeTask}
+                    onSubtaskComplete={(task, id, completed) =>
+                      completeSubtask(task.id, id, completed)
+                    }
                     onSave={(task, changes) => updateTask(task.id, changes)}
                     onDelete={deleteTask}
                     onCreateTag={addTag}
@@ -777,6 +802,9 @@ function App() {
                 onAddTask={addTask}
                 onCompleteTask={completeTask}
                 onSaveTask={(task, changes) => updateTask(task.id, changes)}
+                onSubtaskComplete={(task, id, completed) =>
+                  completeSubtask(task.id, id, completed)
+                }
                 onDeleteTask={deleteTask}
                 onCreateTag={addTag}
               />
@@ -800,6 +828,9 @@ function App() {
                   onCreateTag={addTag}
                   onCompleteTask={completeTask}
                   onSaveTask={(task, changes) => updateTask(task.id, changes)}
+                  onSubtaskComplete={(task, id, completed) =>
+                    completeSubtask(task.id, id, completed)
+                  }
                   onDeleteTask={deleteTask}
                 />
               ) : (

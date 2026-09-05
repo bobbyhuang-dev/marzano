@@ -1,8 +1,14 @@
-import { useId, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { motion } from "motion/react";
 import { type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { prefersReducedMotion, TRANSITION } from "@/lib/motion";
 
 export interface SegmentedOption<T extends string> {
   id: T;
@@ -34,11 +40,9 @@ export interface SegmentedControlProps<T extends string> {
 }
 
 /**
- * A row of options where exactly one is on. The selected pill is a single
- * element that moves between the segments -- `layoutId` is motion's shared
- * layout transition, so the highlight slides from the old segment to the new
- * one instead of blinking out and back in somewhere else. `useId` keeps two
- * controls on screen at once from animating into each other.
+ * A row of options where exactly one is on. The pill moves in the row's local
+ * coordinates: a dialog recentering or scrolling must not become part of the
+ * selection animation. Only its horizontal position and width are animated.
  *
  * It is a real radiogroup: one tab stop, and the arrow keys walk it, which is
  * what the pattern promises and what a row of separate buttons cannot give.
@@ -54,8 +58,40 @@ function SegmentedControl<T extends string>({
   ...labelling
 }: SegmentedControlProps<T>) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const highlightId = useId();
+  const [highlight, setHighlight] = useState<{
+    x: number;
+    width: number;
+  } | null>(null);
   const selectedIndex = options.findIndex((option) => option.id === value);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+
+    const measure = () => {
+      const button = row.querySelector<HTMLButtonElement>(
+        `[data-index="${selectedIndex}"]`,
+      );
+      if (!button) {
+        setHighlight(null);
+        return;
+      }
+      // offsetLeft/offsetWidth exclude transforms and the dialog's page position.
+      const next = { x: button.offsetLeft, width: button.offsetWidth };
+      setHighlight((current) =>
+        current?.x === next.x && current.width === next.width ? current : next,
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    // Other labels can resize too, shifting the selected button along the row.
+    row.querySelectorAll<HTMLButtonElement>("[data-index]").forEach((button) =>
+      observer.observe(button),
+    );
+    return () => observer.disconnect();
+  }, [options, selectedIndex]);
 
   const moveTo = (index: number) => {
     // Wraps, the way a radio group does: the ends of the row are not walls.
@@ -91,11 +127,27 @@ function SegmentedControl<T extends string>({
       role="radiogroup"
       {...labelling}
       className={cn(
-        "flex shrink-0 items-center gap-0.5 rounded-full border border-input bg-background p-0.5 shadow-sm",
+        "relative flex shrink-0 items-center gap-0.5 rounded-full border border-input bg-background p-0.5 shadow-sm",
         stretch && "w-full",
         className,
       )}
     >
+      {highlight ? (
+        <motion.span
+          aria-hidden="true"
+          data-segment-highlight=""
+          initial={false}
+          animate={highlight}
+          // MotionConfig skips transform motion; width must also go instant.
+          transition={prefersReducedMotion() ? { duration: 0 } : TRANSITION.base}
+          className={cn(
+            "pointer-events-none absolute inset-y-0.5 left-0 rounded-full",
+            variant === "solid"
+              ? "bg-primary"
+              : "bg-popover shadow-thumb dark:bg-secondary",
+          )}
+        />
+      ) : null}
       {options.map((option, index) => {
         const checked = index === selectedIndex;
         const Icon = option.icon;
@@ -124,21 +176,6 @@ function SegmentedControl<T extends string>({
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {checked ? (
-              <motion.span
-                aria-hidden="true"
-                layoutId={highlightId}
-                className={cn(
-                  "absolute inset-0 rounded-full",
-                  variant === "solid"
-                    ? "bg-primary"
-                    : // The track is a well cut into the surface, so the selected
-                      // segment has to come back up out of it: on a dark page the
-                      // shadow does nothing, and only the lighter surface reads.
-                      "bg-popover shadow-thumb dark:bg-secondary",
-                )}
-              />
-            ) : null}
             <span className="relative flex items-center gap-2">
               {Icon ? <Icon aria-hidden="true" className="size-4 shrink-0" /> : null}
               <span className={cn(iconOnly && Icon && "sr-only")}>{option.label}</span>

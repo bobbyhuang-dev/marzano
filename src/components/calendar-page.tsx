@@ -248,6 +248,7 @@ interface CalendarPageProps {
   onScopeChange: (scope: CalendarScope) => void;
   onAddTask: (changes: TaskChanges) => void;
   onCompleteTask: (task: Task) => void;
+  onSubtaskComplete: (task: Task, id: string, completed: boolean) => void;
   onSaveTask: (task: Task, changes: TaskChanges) => void;
   onDeleteTask: (task: Task) => void;
   onCreateTag: (values: TagValues) => Tag;
@@ -270,6 +271,7 @@ function CalendarPage({
   onScopeChange,
   onAddTask,
   onCompleteTask,
+  onSubtaskComplete,
   onSaveTask,
   onDeleteTask,
   onCreateTag,
@@ -493,6 +495,7 @@ function CalendarPage({
             />
           }
           onComplete={onCompleteTask}
+          onSubtaskComplete={onSubtaskComplete}
           onSave={onSaveTask}
           onDelete={onDeleteTask}
           onCreateTag={onCreateTag}

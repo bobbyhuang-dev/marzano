@@ -31,7 +31,8 @@ export interface Backup {
 export type BackupContents = Pick<Backup, "tasks" | "tags" | "pomodoro">;
 
 export const BACKUP_FORMAT = "marzano.backup";
-export const BACKUP_VERSION = 1;
+// Older readers must reject this version rather than silently discard task details.
+export const BACKUP_VERSION = 2;
 
 /** Merging keeps both sides; replacing throws the current data away. */
 export type ImportMode = "merge" | "replace";

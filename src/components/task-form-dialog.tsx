@@ -1,7 +1,17 @@
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
-import { CalendarClock, CalendarPlus } from "lucide-react";
+import { CalendarClock, CalendarPlus, Plus, Trash2 } from "lucide-react";
 
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
+import { DescriptionEditor } from "@/components/markdown-description";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import { type TagValues } from "@/components/tag-form-dialog";
 import {
   TagPickerDialog,
@@ -19,8 +29,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { formatDueDate, type Task } from "@/lib/tasks";
+import {
+  createSubtask,
+  formatDueDate,
+  type Subtask,
+  type Task,
+} from "@/lib/tasks";
 import { resolveTags, tagsById as toTagsById, type Tag } from "@/lib/tags";
 import { cn, focusDialogTitleOnTouch } from "@/lib/utils";
 
@@ -28,6 +42,8 @@ export interface TaskChanges {
   title: string;
   dueAt: string | null;
   tagIds: string[];
+  description: string;
+  subtasks: Subtask[];
 }
 
 interface TaskFormDialogProps {
@@ -59,6 +75,9 @@ function TaskFormDialog({
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState<string | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [description, setDescription] = useState("");
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [invalidSubtaskId, setInvalidSubtaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const dialogTitleRef = useRef<HTMLHeadingElement>(null);
   const fieldId = useId();
@@ -74,6 +93,9 @@ function TaskFormDialog({
       setTitle(task?.title ?? "");
       setDueAt(task ? task.dueAt : defaultDueAt);
       setTagIds(task?.tagIds ?? []);
+      setDescription(task?.description ?? "");
+      setSubtasks(task?.subtasks ?? []);
+      setInvalidSubtaskId(null);
       setError("");
     }
   };
@@ -88,94 +110,251 @@ function TaskFormDialog({
 
     if (!nextTitle) {
       setError("Enter a task name.");
+      (
+        event.currentTarget.elements.namedItem("title") as HTMLInputElement
+      )?.focus();
       return;
     }
 
-    onSubmit({ title: nextTitle, dueAt, tagIds });
+    const invalidSubtask = subtasks.find((subtask) => !subtask.title.trim());
+    if (invalidSubtask) {
+      setInvalidSubtaskId(invalidSubtask.id);
+      (
+        event.currentTarget.elements.namedItem(
+          `subtask-${invalidSubtask.id}`,
+        ) as HTMLInputElement
+      )?.focus();
+      return;
+    }
+
+    onSubmit({
+      title: nextTitle,
+      dueAt,
+      tagIds,
+      description,
+      subtasks: subtasks.map((subtask) => ({
+        ...subtask,
+        title: subtask.title.trim(),
+      })),
+    });
     setOpen(false);
+  };
+
+  const updateSubtask = (id: string, changes: Partial<Subtask>) => {
+    setSubtasks((current) =>
+      current.map((subtask) =>
+        subtask.id === id ? { ...subtask, ...changes } : subtask,
+      ),
+    );
+    if (changes.title !== undefined && invalidSubtaskId === id)
+      setInvalidSubtaskId(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
+        className="flex max-h-[calc(100dvh-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 md:max-w-[56rem]"
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, dialogTitleRef.current)
         }
       >
-        <DialogHeader>
-          <DialogTitle ref={dialogTitleRef} tabIndex={-1} className="focus:outline-none">
-            {editing ? "Edit task" : "New task"}
-          </DialogTitle>
-          <DialogDescription>
-            {editing
-              ? "Change the name, the due date, or the tags."
-              : "Name it, then check the date and add any tags."}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-5" onSubmit={handleSubmit}>
-          <div className="grid gap-2">
-            <Label htmlFor={fieldId}>Task name</Label>
-            <Input
-              id={fieldId}
-              value={title}
-              onChange={(event) => {
-                setTitle(event.target.value);
-                if (error) setError("");
-              }}
-              placeholder={editing ? undefined : "What needs doing?"}
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? errorId : undefined}
-              autoComplete="off"
-              spellCheck={false}
-              data-lpignore="true"
-              data-1p-ignore
-            />
-            {error ? (
-              <p id={errorId} role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            ) : null}
+        <form className="flex min-h-0 flex-col" onSubmit={handleSubmit}>
+          <DialogHeader className="shrink-0 p-4 pr-14 min-[420px]:p-6 min-[420px]:pr-16">
+            <DialogTitle
+              ref={dialogTitleRef}
+              tabIndex={-1}
+              className="focus:outline-none"
+            >
+              {editing ? "Edit task" : "New task"}
+            </DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update the details or break the work into smaller steps."
+                : "Name it, add details, and break it into smaller steps."}
+            </DialogDescription>
+          </DialogHeader>
+          {/* Like the due-date picker, only the middle scrolls. Wide screens
+              put the checklist beside the details instead of below them. */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-y border-border">
+            <div className="md:grid md:grid-cols-2">
+              <FieldGroup className="p-4 min-[420px]:p-6">
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor={fieldId}>Task name</FieldLabel>
+                  <Input
+                    id={fieldId}
+                    name="title"
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      if (error) setError("");
+                    }}
+                    placeholder={editing ? undefined : "What needs doing?"}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? errorId : undefined}
+                    autoComplete="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore
+                  />
+                  {error ? <FieldError id={errorId}>{error}</FieldError> : null}
+                </Field>
+                {open ? (
+                  <DescriptionEditor
+                    value={description}
+                    onChange={setDescription}
+                  />
+                ) : null}
+                <Field>
+                  <FieldLabel htmlFor={dueFieldId}>Due date</FieldLabel>
+                  <DueDatePickerDialog
+                    value={dueAt}
+                    onValueChange={setDueAt}
+                    title={dueAt ? "Change due date" : "Add due date"}
+                    trigger={
+                      <Button
+                        id={dueFieldId}
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start overflow-hidden px-3 font-normal",
+                          !dueAt && "text-muted-foreground",
+                        )}
+                      >
+                        {dueAt ? (
+                          <CalendarClock aria-hidden="true" />
+                        ) : (
+                          <CalendarPlus aria-hidden="true" />
+                        )}
+                        <span className="truncate tabular-nums">
+                          {dueAt ? formatDueDate(dueAt) : "Add due date"}
+                        </span>
+                      </Button>
+                    }
+                  />
+                </Field>
+                <TagPickerDialog
+                  tags={tags}
+                  value={tagIds}
+                  onValueChange={setTagIds}
+                  onCreateTag={onCreateTag}
+                  trigger={<TagSelectTrigger tags={selectedTags} />}
+                />
+              </FieldGroup>
+              <FieldGroup className="border-t border-border p-4 min-[420px]:p-6 md:border-l md:border-t-0">
+                <FieldSet>
+                  <FieldLegend>Subtasks</FieldLegend>
+                  {subtasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Break this task into small, checkable steps.
+                    </p>
+                  ) : null}
+                  {subtasks.map((subtask, index) => {
+                    const subtaskFieldId = `${fieldId}-${subtask.id}`;
+                    const invalid = invalidSubtaskId === subtask.id;
+                    return (
+                      <FieldGroup
+                        key={subtask.id}
+                        className="gap-3 rounded-md border border-border p-3"
+                      >
+                        <div className="flex items-start gap-1">
+                          <Checkbox
+                            checked={subtask.completedAt !== null}
+                            onCheckedChange={(checked) =>
+                              updateSubtask(subtask.id, {
+                                completedAt: checked
+                                  ? new Date().toISOString()
+                                  : null,
+                              })
+                            }
+                            aria-label={`Mark subtask ${index + 1} as ${subtask.completedAt ? "incomplete" : "complete"}`}
+                          />
+                          <Field className="flex-1" data-invalid={invalid}>
+                            <FieldLabel
+                              className="sr-only"
+                              htmlFor={subtaskFieldId}
+                            >
+                              Subtask {index + 1} name
+                            </FieldLabel>
+                            <Input
+                              id={subtaskFieldId}
+                              name={`subtask-${subtask.id}`}
+                              value={subtask.title}
+                              onChange={(event) =>
+                                updateSubtask(subtask.id, {
+                                  title: event.target.value,
+                                })
+                              }
+                              placeholder="What is the next step?"
+                              autoFocus={!subtask.title}
+                              autoComplete="off"
+                              aria-invalid={invalid}
+                              aria-describedby={
+                                invalid ? `${subtaskFieldId}-error` : undefined
+                              }
+                            />
+                            {invalid ? (
+                              <FieldError id={`${subtaskFieldId}-error`}>
+                                Enter a subtask name.
+                              </FieldError>
+                            ) : null}
+                          </Field>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete subtask ${index + 1}`}
+                            onClick={() =>
+                              setSubtasks((current) =>
+                                current.filter(
+                                  (item) => item.id !== subtask.id,
+                                ),
+                              )
+                            }
+                          >
+                            <Trash2 aria-hidden="true" />
+                          </Button>
+                        </div>
+                        <details>
+                          <summary className="cursor-pointer rounded-md py-2 text-sm text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70">
+                            {subtask.description.trim()
+                              ? "Edit description"
+                              : "Add description"}
+                          </summary>
+                          {open ? (
+                            <DescriptionEditor
+                              value={subtask.description}
+                              onChange={(value) =>
+                                updateSubtask(subtask.id, {
+                                  description: value,
+                                })
+                              }
+                              label={`Subtask ${index + 1} description`}
+                            />
+                          ) : null}
+                        </details>
+                      </FieldGroup>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    className="self-start"
+                    onClick={() =>
+                      setSubtasks((current) => [...current, createSubtask()])
+                    }
+                  >
+                    <Plus aria-hidden="true" data-icon="inline-start" />
+                    Add subtask
+                  </Button>
+                </FieldSet>
+              </FieldGroup>
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor={dueFieldId}>Due date</Label>
-            <DueDatePickerDialog
-              value={dueAt}
-              onValueChange={setDueAt}
-              title={dueAt ? "Change due date" : "Add due date"}
-              trigger={
-                <Button
-                  id={dueFieldId}
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start overflow-hidden px-3 font-normal",
-                    !dueAt && "text-muted-foreground",
-                  )}
-                >
-                  {dueAt ? (
-                    <CalendarClock aria-hidden="true" />
-                  ) : (
-                    <CalendarPlus aria-hidden="true" />
-                  )}
-                  <span className="truncate tabular-nums">
-                    {dueAt ? formatDueDate(dueAt) : "Add due date"}
-                  </span>
-                </Button>
-              }
-            />
-          </div>
-          <TagPickerDialog
-            tags={tags}
-            value={tagIds}
-            onValueChange={setTagIds}
-            onCreateTag={onCreateTag}
-            trigger={<TagSelectTrigger tags={selectedTags} />}
-          />
-          <DialogFooter>
+          <DialogFooter className="grid shrink-0 grid-cols-2 p-4 min-[420px]:p-6 sm:flex">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit">{editing ? "Save changes" : "Add task"}</Button>
+            <Button type="submit">
+              {editing ? "Save changes" : "Add task"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -25,6 +25,8 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 
 **Tasks** — Add a task with an optional due date and tags, edit or delete it inline, and check it off. Completing a task raises a toast with an Undo action. Drag a row by its grip, or move it with the arrow keys, to set the order by hand.
 
+**Descriptions and subtasks** — Add Markdown notes and a single-level checklist in the task editor. Each subtask has its own name, description, and completion state. Expand a task to read its notes and check off steps; the progress count updates immediately. Editor changes are saved together, and Cancel discards the draft. Parent and child completion are independent: completing or restoring a task preserves its checklist, which remains readable in Completed.
+
 **Due dates and reminders** — A due date is either a day (`Fri, Mar 14`) or a day and a time; day-only tasks come due at the end of that day. The date is coloured by how near it is: red once it has passed, green today, amber tomorrow, purple within the week, and grey beyond that. When a task falls due the app raises a reminder, including in a tab left open or in the background. The picker has Tomorrow and Next week shortcuts and an optional time.
 
 **Calendar** — Open tasks laid out on the days they are due, a week or a month at a time. Pick a day to see its tasks in a list where they can be completed, edited, and deleted as on the task page, or add a task straight onto that day. The grid is one tab stop: arrow keys, Home/End and PageUp/PageDown move through it.
@@ -38,6 +40,8 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 **Completed archive** — Checked-off tasks stay under Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to the cutoff are called out.
 
 **Backup** — Export your tasks, tags and Pomodoro history as one readable JSON file, and import it in another browser. Importing merges by default, keeping whichever copy of each record was edited last, so two browsers can be brought together without losing either side. Replace is there for a clean restore.
+
+Descriptions and subtasks travel with their parent task and merge as one record; simultaneous edits to different subtasks are not combined. New exports use backup version 2, while version 1 files remain importable. Older app versions reject version 2 backups instead of dropping the added details.
 
 **Appearance** — Light and dark themes that follow the system by default, seven accent colours, and a display size that scales the whole app rather than just the text. All three are applied before the first paint, so there is no flash on load.
 

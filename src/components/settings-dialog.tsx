@@ -6,7 +6,6 @@ import {
   useState,
 } from "react";
 import {
-  Check,
   ExternalLink,
   Minus,
   Monitor,
@@ -17,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { ColorSwatch } from "@/components/color-swatch";
 import { SettingToggle } from "@/components/setting-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -181,17 +181,15 @@ function AccentChoice({ value, onValueChange, labelledBy }: AccentChoiceProps) {
       ref={rowRef}
       role="radiogroup"
       aria-labelledby={labelledBy}
-      className="grid grid-cols-7 gap-2.5"
+      className="grid max-w-[19rem] grid-cols-7 gap-2"
     >
       {ACCENTS.map((accent, index) => {
         const selected = index === selectedIndex;
 
         return (
-          <button
+          <ColorSwatch
             key={accent.id}
-            type="button"
-            role="radio"
-            aria-checked={selected}
+            selected={selected}
             aria-label={accent.label}
             title={accent.label}
             data-index={index}
@@ -199,23 +197,7 @@ function AccentChoice({ value, onValueChange, labelledBy }: AccentChoiceProps) {
             tabIndex={selected || (selectedIndex === -1 && index === 0) ? 0 : -1}
             onClick={() => onValueChange(accent.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={cn(
-              "relative flex aspect-square w-full items-center justify-center rounded-full text-primary-foreground shadow-swatch transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95",
-              // Survives focus because focus is an outline rather than a ring: arrowing
-              // across the row moves the selection with it, so the two are always on the
-              // same swatch and a second ring would only overwrite this one.
-              selected && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
-            )}
-          >
-            <Check
-              aria-hidden="true"
-              strokeWidth={3}
-              className={cn(
-                "size-[45%] transition-opacity duration-150 ease-out",
-                selected ? "opacity-100" : "opacity-0",
-              )}
-            />
-          </button>
+          />
         );
       })}
     </div>

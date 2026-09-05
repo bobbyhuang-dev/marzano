@@ -1,8 +1,7 @@
 import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Check } from "lucide-react";
 
+import { ColorSwatch } from "@/components/color-swatch";
 import { readableTextColor, TAG_COLORS } from "@/lib/tags";
-import { cn } from "@/lib/utils";
 
 /** The rendered column count, which changes with the dialog width. */
 function countColumns(grid: HTMLElement | null): number {
@@ -27,6 +26,11 @@ interface TagColorPickerProps {
  * The palette as a grid of swatches. It behaves like a radio group: one tab stop
  * for the whole grid, then the arrow keys walk it -- including up and down,
  * which follow the columns actually on screen rather than an assumed count.
+ *
+ * The palette walks the hue wheel in thirties, so it reads as rows of ten on
+ * a wide dialog and rows of six on a phone, both without a ragged last row.
+ * The grid is capped rather than stretched: a gap wider than the swatch
+ * makes the colours read as scattered, not as one palette.
  */
 function TagColorPicker({
   value,
@@ -73,18 +77,18 @@ function TagColorPicker({
     <div
       ref={gridRef}
       role="radiogroup"
-      className="grid grid-cols-5 gap-2.5 min-[400px]:grid-cols-6"
+      className="grid max-w-[16.5rem] grid-cols-6 gap-2 sm:max-w-none sm:grid-cols-10"
       {...aria}
     >
       {TAG_COLORS.map((color, index) => {
         const selected = index === selectedIndex;
 
         return (
-          <button
+          <ColorSwatch
             key={color.hex}
-            type="button"
-            role="radio"
-            aria-checked={selected}
+            selected={selected}
+            fill={color.hex}
+            markColor={readableTextColor(color.hex)}
             aria-label={color.name}
             title={color.name}
             data-index={index}
@@ -93,28 +97,7 @@ function TagColorPicker({
             tabIndex={selected || (selectedIndex === -1 && index === 0) ? 0 : -1}
             onClick={() => onValueChange(color.hex)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={cn(
-              // The inset hairline keeps pale swatches from dissolving into the
-              // dialog. It is a class, not an inline style, so the ring below
-              // composes with it instead of being overwritten.
-              "relative flex aspect-square w-full items-center justify-center rounded-full shadow-swatch transition-ui hover:scale-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-95",
-              // Survives focus because focus is an outline rather than a ring: arrowing
-              // across the row moves the selection with it, so the two are always on the
-              // same swatch and a second ring would only overwrite this one.
-              selected && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
-            )}
-            style={{ backgroundColor: color.hex }}
-          >
-            <Check
-              aria-hidden="true"
-              strokeWidth={3}
-              className={cn(
-                "size-[45%] transition-ui",
-                selected ? "opacity-100" : "opacity-0",
-              )}
-              style={{ color: readableTextColor(color.hex) }}
-            />
-          </button>
+          />
         );
       })}
     </div>

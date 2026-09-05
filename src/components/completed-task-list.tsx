@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, CircleCheckBig, Clock3, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
+import { TaskDetails } from "@/components/task-details";
 import { DeleteTaskDialog } from "@/components/delete-task-dialog";
 import { TagChipList } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,7 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
           />
         </div>
       </div>
+      <TaskDetails task={task} />
     </motion.li>
   );
 }
