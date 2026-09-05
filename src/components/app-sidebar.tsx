@@ -201,6 +201,44 @@ function SidebarThemeToggle({
   );
 }
 
+function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-9 items-center justify-between gap-1 text-muted-foreground/70",
+        collapsed ? "justify-center" : "pl-3",
+      )}
+    >
+      {!collapsed ? (
+        <p className={cn("whitespace-nowrap text-[11px]", RAIL_LABEL)}>
+          a{" "}
+          <a
+            href="https://bobbyhuang.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-sm transition-ui hover:text-foreground hover:underline underline-offset-4 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
+          >
+            bobbyhuang.dev
+          </a>{" "}
+          project
+        </p>
+      ) : null}
+      <a
+        href="https://github.com/bobbyhuang-dev/marzano"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View Marzano on GitHub"
+        title="View Marzano on GitHub"
+        className="flex size-9 shrink-0 items-center justify-center rounded-md transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" className="size-4" aria-hidden="true">
+          <path d="M12 .75a11.25 11.25 0 0 0-3.558 21.923c.563.104.768-.244.768-.542 0-.267-.01-.974-.015-1.912-3.13.68-3.791-1.508-3.791-1.508-.512-1.3-1.25-1.646-1.25-1.646-1.023-.7.078-.686.078-.686 1.13.08 1.725 1.16 1.725 1.16 1.005 1.722 2.637 1.225 3.28.937.102-.728.393-1.225.715-1.507-2.498-.284-5.124-1.25-5.124-5.563 0-1.23.44-2.233 1.16-3.02-.116-.285-.503-1.43.11-2.98 0 0 .944-.302 3.095 1.153a10.78 10.78 0 0 1 5.634 0c2.149-1.455 3.092-1.153 3.092-1.153.615 1.55.228 2.695.112 2.98.722.787 1.158 1.79 1.158 3.02 0 4.324-2.63 5.276-5.136 5.554.404.35.765 1.04.765 2.097 0 1.514-.014 2.736-.014 3.107 0 .3.203.65.774.54A11.251 11.251 0 0 0 12 .75Z" />
+        </svg>
+      </a>
+    </div>
+  );
+}
+
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
     <div
@@ -396,6 +434,7 @@ function AppSidebar({
                 {collapsed ? "Expand sidebar" : "Collapse sidebar"}
               </span>
             </button>
+            <SidebarProjectLinks collapsed={narrow} />
           </div>
         </div>
       </aside>
@@ -423,6 +462,7 @@ function AppSidebar({
               onThemeChange={onThemeChange}
               collapsed={false}
             />
+            <SidebarProjectLinks collapsed={false} />
           </div>
         </SheetContent>
       </Sheet>
