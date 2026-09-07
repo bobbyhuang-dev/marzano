@@ -149,7 +149,7 @@ function OptionCombobox<T extends string>({
         onBlur={closeList}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex h-12 w-full items-center justify-between gap-1 pl-3 pr-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full items-center justify-between gap-1 pl-3 pr-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50",
           SEGMENT_FOCUS_RING,
         )}
         {...aria}

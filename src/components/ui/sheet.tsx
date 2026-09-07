@@ -31,7 +31,7 @@ const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 disabled:pointer-events-none">
+      <DialogPrimitive.Close className="absolute right-2.5 top-2.5 inline-flex size-8 items-center justify-center rounded-md pointer-coarse:size-9 text-muted-foreground transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 disabled:pointer-events-none">
         <X className="size-4" aria-hidden="true" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -43,7 +43,7 @@ SheetContent.displayName = DialogPrimitive.Content.displayName;
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col gap-2 border-b border-border p-5 pr-14 text-left sm:p-6 sm:pr-14",
+      "flex shrink-0 flex-col gap-1 border-b border-border px-5 pt-4 pb-3 pr-12 text-left",
       className,
     )}
     {...props}
@@ -57,7 +57,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-base font-semibold leading-tight tracking-[-0.01em]", className)}
     {...props}
   />
 ));
@@ -69,7 +69,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm leading-relaxed text-muted-foreground", className)}
+    className={cn("text-sm leading-normal text-muted-foreground", className)}
     {...props}
   />
 ));

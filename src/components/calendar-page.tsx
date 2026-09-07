@@ -57,7 +57,7 @@ const CELL_LAYOUT: Record<
   CalendarScope,
   { titles: number; dots: number; height: string }
 > = {
-  month: { titles: 3, dots: 3, height: "h-16 sm:h-[7.75rem]" },
+  month: { titles: 3, dots: 3, height: "h-14 sm:h-24" },
   week: { titles: 6, dots: 4, height: "h-24 sm:h-[12.5rem]" },
 };
 
@@ -377,7 +377,7 @@ function CalendarPage({
           </Button>
           <h2
             aria-live="polite"
-            className="ml-1 min-w-0 truncate text-base font-semibold tracking-[-0.01em] text-foreground sm:text-lg"
+            className="ml-1 min-w-0 truncate text-base font-semibold tracking-[-0.01em] text-foreground"
           >
             {formatCalendarRange(anchor, scope)}
           </h2>
@@ -394,7 +394,7 @@ function CalendarPage({
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <table
           ref={gridRef}
           role="grid"
@@ -440,8 +440,8 @@ function CalendarPage({
         </table>
       </div>
 
-      <section className="mt-8" aria-labelledby="calendar-day-heading">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <section className="mt-6" aria-labelledby="calendar-day-heading">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">
             <h2
               id="calendar-day-heading"
@@ -449,7 +449,7 @@ function CalendarPage({
             >
               {format(selectedDate, "EEEE, MMMM d")}
             </h2>
-            <p className="mt-0.5 text-sm text-muted-foreground" aria-live="polite">
+            <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
               {selectedTasks.length === 0
                 ? "Nothing due"
                 : `${taskCountLabel(selectedTasks.length)} due`}

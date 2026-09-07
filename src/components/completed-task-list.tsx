@@ -65,19 +65,19 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
       className={cn("relative", animating.active && "overflow-clip")}
     >
       <TaskDetails task={task}>
-      <div className="flex items-start gap-3 py-3.5 sm:py-4">
+      <div className="flex items-start gap-3 py-2.5 sm:py-3">
         <span
           aria-hidden="true"
-          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+          className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
         >
           <Check strokeWidth={3} className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-medium leading-6 text-foreground">
+          <p className="break-words text-sm font-medium leading-5 text-foreground">
             {task.title}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <p className="text-sm text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <p className="text-xs text-muted-foreground">
               {task.completedAt
                 ? formatCompletedAt(task.completedAt, now)
                 : "Completed"}
@@ -94,20 +94,21 @@ function CompletedRow({ task, tagsById, now, onRestore, onDelete }: CompletedRow
                 </>
               ) : null}
             </p>
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock3 className="size-4 shrink-0" aria-hidden="true" />
-              {task.focusedMs > 0
-                ? `${formatFocusDuration(task.focusedMs)} focused`
-                : "No focus time recorded"}
-            </p>
+            {task.focusedMs > 0 ? (
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
+                {formatFocusDuration(task.focusedMs)} focused
+              </p>
+            ) : null}
             <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
             <TaskDetailsTrigger task={task} />
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5 self-center">
+        <div className="flex shrink-0 items-center self-center">
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
+            className="text-muted-foreground"
             aria-label={`Restore ${task.title}`}
             title="Restore task"
             onClick={onRestore}
@@ -146,7 +147,7 @@ function CompletedTaskList({
 
   return (
     <section aria-labelledby="completed-heading">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2
           id="completed-heading"
           className="text-sm font-semibold tracking-[-0.01em] text-foreground"
@@ -159,18 +160,18 @@ function CompletedTaskList({
       </div>
       <div>
         {completed.length === 0 ? (
-          <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10 text-center">
-            <div className="mb-4 flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-border px-5 py-8 text-center">
+            <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <CircleCheckBig className="size-5" aria-hidden="true" />
             </div>
-            <p className="font-medium text-foreground">Nothing completed yet</p>
+            <p className="text-sm font-medium text-foreground">Nothing completed yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Check a task off and it waits here in case you need it back.
             </p>
           </div>
         ) : (
           <ul
-            className="-mt-3.5 divide-y divide-border sm:-mt-4"
+            className="-mt-2.5 divide-y divide-border sm:-mt-3"
             aria-label="Completed tasks"
           >
             <AnimatePresence initial={false}>

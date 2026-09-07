@@ -45,9 +45,10 @@
           document.documentElement.dataset.accent =
             localStorage.getItem("marzano.accent.v1") || "graphite";
 
+          // A factor on the fluid root size in index.css, not the size itself.
           var zoom = Number(localStorage.getItem("marzano.zoom.v1"));
           if (zoom >= 80 && zoom <= 150 && zoom !== 100) {
-            document.documentElement.style.fontSize = zoom + "%";
+            document.documentElement.style.setProperty("--display-scale", String(zoom / 100));
           }
         } catch (error) {
           // Storage can be blocked; the light default is already in the CSS.

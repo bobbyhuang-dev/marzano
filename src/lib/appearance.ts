@@ -102,11 +102,19 @@ export function applyAccent(accent: AccentId) {
 /**
  * Everything in the app is sized in `rem`, so moving the root font size moves
  * the whole layout -- type, spacing, icons and the sidebar -- rather than
- * scaling the text out of the boxes it sits in.
+ * scaling the text out of the boxes it sits in. The root size itself is fluid
+ * in `index.css` (it follows the viewport width), so the step is a factor on
+ * top of that rather than a replacement for it: 125% on a wide screen is 125%
+ * of the size that screen already gets.
  */
 export function applyZoom(zoom: ZoomLevel) {
-  document.documentElement.style.fontSize =
-    zoom === DEFAULT_ZOOM ? "" : `${zoom}%`;
+  const root = document.documentElement;
+
+  if (zoom === DEFAULT_ZOOM) {
+    root.style.removeProperty("--display-scale");
+  } else {
+    root.style.setProperty("--display-scale", String(zoom / 100));
+  }
 }
 
 /** The next step up or down, or the current one at either end of the range. */

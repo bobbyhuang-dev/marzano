@@ -5,6 +5,7 @@ import {
   useId,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   BookOpen,
@@ -16,7 +17,7 @@ import {
   ListTodo,
   PanelLeft,
   Plus,
-  DatabaseBackup,
+  FolderOpen,
   SearchX,
   Settings,
   Sparkles,
@@ -30,9 +31,17 @@ import {
   SidebarFooterButton,
   type SidebarItem,
 } from "@/components/app-sidebar";
-import { BackupDialog } from "@/components/backup-dialog";
+import { StorageUpgradeNotice } from "@/components/storage-upgrade-notice";
+import { dismissStorageUpgrade, shouldShowStorageUpgrade, LEGACY_DATA_KEYS } from "@/lib/storage-upgrade";
+import { LocalDataDialog } from "@/components/local-data-dialog";
+import { downloadCopy, openLocalData, storageLabel, supportsLocalFolders, type LocalDataStore } from "@/lib/local-data";
+import { type DataContents } from "@/lib/data-file";
 import { CalendarPage } from "@/components/calendar-page";
 import { CompletedTaskList } from "@/components/completed-task-list";
+import {
+  DescriptionPickerDialog,
+  DescriptionSelectTrigger,
+} from "@/components/description-picker-dialog";
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
@@ -72,12 +81,6 @@ import {
   type ZoomLevel,
 } from "@/lib/appearance";
 import {
-  applyImport,
-  type BackupContents,
-  type ImportMode,
-  summarizeBackup,
-} from "@/lib/backup";
-import {
   type CalendarScope,
   loadCalendarScope,
   saveCalendarScope,
@@ -94,11 +97,9 @@ import {
   hasAnyTag,
   isActiveTask,
   loadDueSort,
-  loadTasks,
   removeTagFromTasks,
   reorderTasks,
   saveDueSort,
-  saveTasks,
   setSubtaskCompleted,
   sortTasksByDue,
   type Subtask,
@@ -107,9 +108,7 @@ import {
 } from "@/lib/tasks";
 import {
   createTag,
-  loadTags,
   resolveTags,
-  saveTags,
   tagsById as toTagsById,
   type Tag,
   touchTag,
@@ -133,9 +132,15 @@ const VIEW_TITLES: Record<ViewId, string> = {
   tags: "Tags",
 };
 
-function App() {
-  const [tasks, setTasks] = useState<Task[]>(loadTasks);
-  const [tags, setTags] = useState<Tag[]>(loadTags);
+function AppContent({ store }: { store: LocalDataStore }) {
+  const [tasks, setTasks] = useState<Task[]>(() => store.contents.tasks);
+  const [tags, setTags] = useState<Tag[]>(() => store.contents.tags);
+  const storage = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [dataOpen, setDataOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(() => shouldShowStorageUpgrade(storage.upgradeRequired, storage.upgradeCompleted));
+  const dismissUpgrade = () => { dismissStorageUpgrade(); setUpgradeOpen(false); };
+  const startUpgrade = () => { dismissUpgrade(); setDataOpen(true); };
+  const saveUpgradeCopy = () => { dismissUpgrade(); downloadCopy(store.contents); };
   // Deleting leaves a tombstone behind so the deletion can travel to another
   // copy of the data; everything downstream works from the records still here.
   const presentTasks = tasks.filter(isPresent);
@@ -165,7 +170,7 @@ function App() {
       }),
     );
   }, []);
-  const pomodoro = usePomodoro(presentTasks, addFocusedTime);
+  const pomodoro = usePomodoro(presentTasks, addFocusedTime, store.contents.pomodoro);
   const { theme, resolvedTheme, setTheme } = useTheme();
   const appearance = useAppearance();
   const [view, setView] = useState<ViewId>("tasks");
@@ -179,7 +184,7 @@ function App() {
   // Opened unasked only on a browser that has never been shown it and holds no
   // work yet; every other way in is a button.
   const [guideOpen, setGuideOpen] = useState(() =>
-    shouldOpenGuide(tasks.length > 0 || tags.length > 0),
+    !storage.upgradeRequired && shouldOpenGuide(tasks.length > 0 || tags.length > 0),
   );
   const whatsNew = useWhatsNew();
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
@@ -187,6 +192,7 @@ function App() {
   const [dueValue, setDueValue] = useState<string | null>(null);
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
   const [draftSubtasks, setDraftSubtasks] = useState<Subtask[]>([]);
+  const [draftDescription, setDraftDescription] = useState("");
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -212,12 +218,28 @@ function App() {
   useCompletedCleanup(setTasks);
 
   useEffect(() => {
-    saveTasks(tasks);
-  }, [tasks]);
+    store.update({ tasks, tags, pomodoro: { settings: pomodoro.settings, history: pomodoro.history } });
+  }, [store, tasks, tags, pomodoro.settings, pomodoro.history]);
 
   useEffect(() => {
-    saveTags(tags);
-  }, [tags]);
+    const check = () => { if (!document.hidden) void store.checkForChanges(); };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (store.hasUnsavedChanges) { event.preventDefault(); event.returnValue = ""; }
+    };
+    const legacyChanged = (event: StorageEvent) => {
+      if (event.key === null || LEGACY_DATA_KEYS.includes(event.key)) store.checkLegacyChanges();
+    };
+    window.addEventListener("storage", legacyChanged);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => {
+      window.removeEventListener("storage", legacyChanged);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("beforeunload", beforeUnload);
+    };
+  }, [store]);
 
   useEffect(() => {
     saveDueSort(dueSort);
@@ -238,7 +260,7 @@ function App() {
   // keeps StrictMode's second mount from raising it twice.
   const announceRelease = whatsNew.announce;
   useEffect(() => {
-    if (!announceRelease || LATEST_RELEASE === null) return;
+    if (!announceRelease || LATEST_RELEASE === null || (storage.upgradeRequired && !storage.upgradeCompleted)) return;
 
     toast("Marzano updated", {
       id: "whats-new",
@@ -250,7 +272,7 @@ function App() {
         onClick: () => setWhatsNewOpen(true),
       },
     });
-  }, [announceRelease]);
+  }, [announceRelease, storage.upgradeRequired, storage.upgradeCompleted]);
 
   const navItems: SidebarItem[] = [
     {
@@ -320,13 +342,14 @@ function App() {
       title: trimmedTitle,
       dueAt: dueValue,
       tagIds: draftTagIds,
-      description: "",
+      description: draftDescription,
       subtasks: draftSubtasks,
     });
     setTitle("");
     setDueValue(null);
     setDraftTagIds([]);
     setDraftSubtasks([]);
+    setDraftDescription("");
     setError("");
     titleInputRef.current?.focus();
   };
@@ -460,43 +483,15 @@ function App() {
     );
   };
 
-  const backupContents: BackupContents = {
-    tasks,
-    tags,
-    pomodoro: { settings: pomodoro.settings, history: pomodoro.history },
-  };
-
-  const importBackup = (mode: ImportMode, incoming: BackupContents) => {
-    const merged = applyImport(mode, backupContents, incoming);
-
-    setTasks(merged.tasks);
-    setTags(merged.tags);
-    pomodoro.restoreState(merged.pomodoro.settings, merged.pomodoro.history);
-
-    // A replace, or a merge that brought in a deletion, can take away the tag
-    // the filter, the draft task or the open page was pointing at.
-    const survivingTagIds = new Set(
-      merged.tags.filter(isPresent).map((tag) => tag.id),
-    );
-    setTagFilter((current) => current.filter((id) => survivingTagIds.has(id)));
-    setDraftTagIds((current) => current.filter((id) => survivingTagIds.has(id)));
-    setOpenTagId((current) =>
-      current && survivingTagIds.has(current) ? current : null,
-    );
-
-    const summary = summarizeBackup(merged);
-    const description = `${summary.openTasks} open ${
-      summary.openTasks === 1 ? "task" : "tasks"
-    }, ${summary.tags} ${summary.tags === 1 ? "tag" : "tags"}.`;
-
-    setStatusMessage(
-      mode === "replace"
-        ? `Replaced your data with the backup. ${description}`
-        : `Merged the backup into your data. ${description}`,
-    );
-    toast.success(mode === "replace" ? "Backup restored" : "Backup merged", {
-      description,
-    });
+  const applyData = (incoming: DataContents) => {
+    setTasks(incoming.tasks);
+    setTags(incoming.tags);
+    pomodoro.restoreState(incoming.pomodoro.settings, incoming.pomodoro.history);
+    const surviving = new Set(incoming.tags.filter(isPresent).map((tag) => tag.id));
+    setTagFilter((current) => current.filter((id) => surviving.has(id)));
+    setDraftTagIds((current) => current.filter((id) => surviving.has(id)));
+    setOpenTagId((current) => current && surviving.has(current) ? current : null);
+    setStatusMessage("Opened local data.");
   };
 
   const selectTheme = (next: ThemePreference) => {
@@ -560,16 +555,11 @@ function App() {
               fresh={whatsNew.fresh}
               onClick={() => setWhatsNewOpen(true)}
             />
-            <BackupDialog
-              contents={backupContents}
-              onImport={importBackup}
-              trigger={
-                <SidebarFooterButton
-                  icon={DatabaseBackup}
-                  label="Backup"
-                  collapsed={collapsed}
-                />
-              }
+            <SidebarFooterButton
+              icon={FolderOpen}
+              label="Local data"
+              collapsed={collapsed}
+              onClick={() => setDataOpen(true)}
             />
             <SettingsDialog
               theme={theme}
@@ -594,59 +584,99 @@ function App() {
         onMenuOpenChange={setMenuOpen}
       />
 
+      <StorageUpgradeNotice open={upgradeOpen && !storage.upgradeCompleted} supported={supportsLocalFolders()} onDismiss={dismissUpgrade} onStart={startUpgrade} onSaveCopy={saveUpgradeCopy} />
+      <LocalDataDialog open={dataOpen} onOpenChange={setDataOpen} store={store} status={storage} onApply={applyData} />
+
       <main className="min-w-0 flex-1 overflow-x-hidden">
         <div
           className={cn(
-            "mx-auto w-full px-4 py-8 transition-[max-width] duration-base ease-out-cubic sm:px-6 sm:py-12",
+            "mx-auto w-full px-4 py-6 transition-[max-width] duration-base ease-out-cubic sm:px-6 sm:py-8",
             // Seven columns of days need more room than a single column of task
-            // rows, so the calendar is the one page that reads wider.
-            view === "calendar" ? "max-w-5xl" : "max-w-3xl",
+            // rows, so the calendar is the one page that reads wider. Both take
+            // one more step on a wide screen: the root size already grows with
+            // the viewport (index.css), and this keeps the column's share of
+            // it from shrinking, without stretching a task row past the width
+            // it can be read at in one glance.
+            view === "calendar"
+              ? "max-w-5xl 2xl:max-w-6xl"
+              : "max-w-3xl 2xl:max-w-4xl",
           )}
         >
-          {/* Keyed on the view, so each one is a fresh mount that rises in;
-              no exit, so nothing waits on the one before. The live region
-              stays outside it, or every change would re-announce itself. */}
-          <div key={`${view}/${openTagId ?? ""}`} className="animate-view-in">
-            <div className="mb-8 sm:mb-10">
-              {openTag ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="-ml-3 mb-2 text-muted-foreground"
-                  onClick={() => setOpenTagId(null)}
-                >
-                  <ChevronLeft aria-hidden="true" />
-                  All tags
-                </Button>
-              ) : null}
-              <header className="flex items-center gap-2 sm:gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="-ml-2 shrink-0 text-muted-foreground lg:hidden"
-                  aria-label="Open menu"
-                  title="Open menu"
-                  onClick={() => setMenuOpen(true)}
-                >
-                  <PanelLeft aria-hidden="true" />
-                </Button>
-                <h1 className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+          {/* The title row is the one piece of chrome every page shares, so
+              it sits outside the keyed view below: the storage status at its
+              end is a live region, and remounting it with each view would
+              read the same three words aloud on every switch. */}
+          <div className="mb-5 sm:mb-6">
+            <header className="flex items-center gap-2 sm:gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-ml-2 shrink-0 text-muted-foreground lg:hidden"
+                aria-label="Open menu"
+                title="Open menu"
+                onClick={() => setMenuOpen(true)}
+              >
+                <PanelLeft aria-hidden="true" />
+              </Button>
+              {/* Keyed like the page body, so the name rises in with it. */}
+              <div
+                key={`${view}/${openTagId ?? ""}`}
+                className="flex min-w-0 flex-1 items-center gap-2 animate-view-in sm:gap-3"
+              >
+                {openTag ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground lg:-ml-2"
+                    aria-label="Back to all tags"
+                    title="All tags"
+                    onClick={() => setOpenTagId(null)}
+                  >
+                    <ChevronLeft aria-hidden="true" />
+                  </Button>
+                ) : null}
+                <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold leading-tight tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
                   {pageTitle}
                 </h1>
-                {/* The only page with a setting of its own keeps it on the title
-                    row, rather than floating a control above the page. */}
+                {/* The only page with a setting of its own keeps it on the
+                    title row, rather than floating a control above the page. */}
                 {view === "pomodoro" ? (
                   <PomodoroSettingsDialog controller={pomodoro} />
                 ) : null}
-              </header>
-            </div>
-
+              </div>
+              {/* Where the tasks are, in three words, on every page: the one
+                  status the app cannot afford to hide, and the way into the
+                  dialog that says the rest. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "shrink-0 text-muted-foreground",
+                  ["error", "access", "conflict"].includes(storage.phase) && "text-destructive hover:text-destructive",
+                )}
+                onClick={() => setDataOpen(true)}
+              >
+                <FolderOpen aria-hidden="true" />
+                <span role="status" aria-live="polite">{storageLabel(storage)}</span>
+              </Button>
+            </header>
+            {storage.cacheWarning && <p role="alert" className="mt-1 text-xs text-destructive">{storage.cacheWarning}</p>}
+          </div>
+          {/* Keyed on the view, so each one is a fresh mount that rises in;
+              no exit, so nothing waits on the one before. The live regions
+              stay outside it, or every change would re-announce itself. */}
+          <div key={`${view}/${openTagId ?? ""}`} className="animate-view-in">
             {view === "tasks" ? (
               <>
-                <form className="grid gap-3" onSubmit={handleAddTask}>
-                  <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)]">
-                    <div className="grid gap-2">
-                      <Label htmlFor={titleId}>Task name</Label>
+                <form className="grid gap-2" onSubmit={handleAddTask}>
+                  {/* One line: the field and the button that sends it. The
+                      name is the whole form on a good day, so nothing else
+                      sits between the reader and typing it. */}
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor={titleId} className="sr-only">
+                        Task name
+                      </Label>
                       <Input
                         ref={titleInputRef}
                         id={titleId}
@@ -664,14 +694,15 @@ function App() {
                         data-1p-ignore
                       />
                     </div>
-                    <Button type="submit" className="w-full">
+                    <Button type="submit" className="shrink-0">
                       <Plus aria-hidden="true" />
-                      Add task
+                      Add<span className="sr-only"> task</span>
                     </Button>
                   </div>
-                  {/* All three are slots the shape of the field above them, muted
-                      until filled: they say "optional" without a word of copy. */}
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  {/* The optional parts are chips under the field, muted until
+                      filled: small enough to ignore, and the list starts a few
+                      lines down rather than below a wall of empty fields. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <DueDatePickerDialog
                       value={dueValue}
                       onValueChange={setDueValue}
@@ -680,13 +711,14 @@ function App() {
                         <Button
                           id={dueId}
                           variant="outline"
+                          size="sm"
                           aria-label={
                             dueValue
                               ? `Due ${formatDueDate(dueValue)}. Change due date`
                               : "Add due date"
                           }
                           className={cn(
-                            "w-full justify-start overflow-hidden px-3 font-normal",
+                            "max-w-full rounded-full font-normal",
                             !dueValue && "text-muted-foreground",
                           )}
                         >
@@ -696,7 +728,7 @@ function App() {
                             <CalendarPlus aria-hidden="true" />
                           )}
                           <span className="truncate tabular-nums">
-                            {dueValue ? formatDueDate(dueValue) : "Add due date"}
+                            {dueValue ? formatDueDate(dueValue) : "Due date"}
                           </span>
                         </Button>
                       }
@@ -706,12 +738,22 @@ function App() {
                       value={draftTagIds}
                       onValueChange={setDraftTagIds}
                       onCreateTag={addTag}
-                      trigger={<TagSelectTrigger tags={draftTags} />}
+                      trigger={<TagSelectTrigger tags={draftTags} variant="chip" />}
                     />
                     <SubtaskPickerDialog
                       value={draftSubtasks}
                       onValueChange={setDraftSubtasks}
-                      trigger={<SubtaskSelectTrigger subtasks={draftSubtasks} />}
+                      trigger={<SubtaskSelectTrigger subtasks={draftSubtasks} variant="chip" />}
+                    />
+                    <DescriptionPickerDialog
+                      value={draftDescription}
+                      onValueChange={setDraftDescription}
+                      trigger={
+                        <DescriptionSelectTrigger
+                          description={draftDescription}
+                          variant="chip"
+                        />
+                      }
                     />
                   </div>
                   {error ? (
@@ -721,29 +763,34 @@ function App() {
                   ) : null}
                 </form>
 
-                <section className="mt-8" aria-labelledby="tasks-heading">
-                  <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <TagFilterMenu
-                      tags={presentTags}
-                      selected={tagFilter}
-                      onSelectedChange={setTagFilter}
-                      counts={tagCounts}
-                      onManageTags={() => selectView("tags")}
-                    />
-                    <DueSortMenu value={dueSort} onValueChange={selectDueSort} />
-                  </div>
-                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <h2
-                      id="tasks-heading"
-                      className="text-sm font-semibold tracking-[-0.01em] text-foreground"
-                    >
-                      Your tasks
-                    </h2>
-                    {filtering ? (
-                      <p className="text-xs text-muted-foreground" aria-live="polite">
-                        Showing {visibleTasks.length} of {activeTasks.length}
-                      </p>
-                    ) : null}
+                <section className="mt-6" aria-labelledby="tasks-heading">
+                  {/* The heading and the two controls that shape the list share
+                      one line, so the list is one row of chrome away from the
+                      composer rather than three. */}
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <div className="flex min-w-0 items-baseline gap-3">
+                      <h2
+                        id="tasks-heading"
+                        className="text-sm font-semibold tracking-[-0.01em] text-foreground"
+                      >
+                        Your tasks
+                      </h2>
+                      {filtering ? (
+                        <p className="text-xs text-muted-foreground" aria-live="polite">
+                          Showing {visibleTasks.length} of {activeTasks.length}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <TagFilterMenu
+                        tags={presentTags}
+                        selected={tagFilter}
+                        onSelectedChange={setTagFilter}
+                        counts={tagCounts}
+                        onManageTags={() => selectView("tags")}
+                      />
+                      <DueSortMenu value={dueSort} onValueChange={selectDueSort} />
+                    </div>
                   </div>
                   <TaskList
                     tasks={visibleTasks}
@@ -881,6 +928,24 @@ function App() {
       <Toaster theme={resolvedTheme} />
     </div>
   );
+}
+
+function App() {
+  const [store, setStore] = useState<LocalDataStore | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    void openLocalData().then((next) => { if (active) setStore(next); }, (cause) => {
+      if (active) setError(cause instanceof Error ? cause.message : "Could not open local storage.");
+    });
+    return () => { active = false; };
+  }, []);
+  if (store) return <AppContent store={store} />;
+  return <main className="mx-auto grid min-h-dvh max-w-md content-center gap-4 p-6">
+    <h1 className="text-xl font-semibold">Marzano</h1>
+    <p role={error ? "alert" : "status"} className="text-sm text-muted-foreground">{error || "Opening your local data…"}</p>
+    {error && <Button onClick={() => window.location.reload()}>Reload</Button>}
+  </main>;
 }
 
 export default App;

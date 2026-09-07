@@ -13,9 +13,10 @@ import { SubtaskFields } from "@/components/subtask-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
-  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -27,6 +28,8 @@ interface SubtaskSelectTriggerProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** The subtasks drafted so far. */
   subtasks: Subtask[];
+  /** `chip` is the small pill under the task page's composer. */
+  variant?: "field" | "chip";
 }
 
 /**
@@ -36,7 +39,8 @@ interface SubtaskSelectTriggerProps
 const SubtaskSelectTrigger = forwardRef<
   HTMLButtonElement,
   SubtaskSelectTriggerProps
->(({ subtasks, className, ...props }, ref) => {
+>(({ subtasks, variant = "field", className, ...props }, ref) => {
+  const chip = variant === "chip";
   const count = subtasks.length;
   const label = count === 1 ? "1 subtask" : `${count} subtasks`;
 
@@ -44,9 +48,11 @@ const SubtaskSelectTrigger = forwardRef<
     <Button
       ref={ref}
       variant="outline"
+      size={chip ? "sm" : "default"}
       aria-label={count === 0 ? "Add subtasks" : `${label}. Edit subtasks`}
       className={cn(
-        "w-full justify-start overflow-hidden px-3 font-normal",
+        "max-w-full justify-start overflow-hidden font-normal",
+        chip ? "rounded-full" : "w-full px-3",
         count === 0 && "text-muted-foreground",
         className,
       )}
@@ -58,7 +64,7 @@ const SubtaskSelectTrigger = forwardRef<
         <ListChecks aria-hidden="true" />
       )}
       <span className="truncate tabular-nums">
-        {count === 0 ? "Add subtasks" : label}
+        {count === 0 ? (chip ? "Subtasks" : "Add subtasks") : label}
       </span>
     </Button>
   );
@@ -135,13 +141,14 @@ function SubtaskPickerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1.5rem)] max-w-xl flex-col gap-0 overflow-hidden p-0"
+        className="max-w-xl"
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, titleRef.current)
         }
       >
         <form className="flex min-h-0 flex-col" onSubmit={handleSubmit}>
-          <DialogHeader className="shrink-0 p-5 pb-4 min-[420px]:p-6 min-[420px]:pb-4">
+          <DialogHeader>
             <DialogTitle
               ref={titleRef}
               tabIndex={-1}
@@ -149,24 +156,21 @@ function SubtaskPickerDialog({
             >
               Subtasks
             </DialogTitle>
-            <DialogDescription>
-              Break this task into small, checkable steps.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-border p-5 min-[420px]:p-6">
+          <DialogBody>
             {draft.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <div className="mb-4 flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-3 text-center">
+                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <ListChecks className="size-5" aria-hidden="true" />
                 </div>
-                <p className="font-medium text-foreground">No subtasks yet</p>
-                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">No subtasks yet</p>
+                <p className="mt-0.5 max-w-xs text-balance text-sm text-muted-foreground">
                   Each step gets its own checkbox on the task.
                 </p>
               </div>
             ) : (
-              <ul className="grid gap-3" aria-label="Subtasks">
+              <ul className="grid gap-2" aria-label="Subtasks">
                 {draft.map((subtask, index) => (
                   <li key={subtask.id}>
                     <SubtaskFields
@@ -181,11 +185,12 @@ function SubtaskPickerDialog({
                 ))}
               </ul>
             )}
-          </div>
+          </DialogBody>
 
-          <div className="grid shrink-0 gap-2 border-t border-border p-5 min-[420px]:flex min-[420px]:items-center min-[420px]:justify-between min-[420px]:p-6">
+          <DialogFooter>
             <Button
               variant="ghost"
+              className="mr-auto"
               onClick={() =>
                 setDraft((current) => [...current, createSubtask()])
               }
@@ -193,13 +198,11 @@ function SubtaskPickerDialog({
               <Plus aria-hidden="true" />
               Add subtask
             </Button>
-            <div className="grid grid-cols-2 gap-2 min-[420px]:flex">
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Save subtasks</Button>
-            </div>
-          </div>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit">Save subtasks</Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

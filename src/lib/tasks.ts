@@ -209,6 +209,11 @@ export function createTask(
 }
 
 /** A task matches a tag filter when it carries any of the selected tags. */
+/** Whether a task carries a description or a checklist: anything a row could open. */
+export function hasTaskDetails(task: Task): boolean {
+  return Boolean(task.description.trim()) || task.subtasks.length > 0;
+}
+
 export function hasAnyTag(task: Task, tagIds: string[]): boolean {
   return tagIds.some((tagId) => task.tagIds.includes(tagId));
 }

@@ -54,7 +54,7 @@ function saveCollapsed(collapsed: boolean) {
 }
 
 const FOOTER_BUTTON =
-  "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70";
+  "flex min-h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-ui hover:bg-accent pointer-coarse:min-h-10 hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70";
 
 /**
  * Text on the docked rail. Collapsing fades it out at once, while the width is
@@ -205,8 +205,8 @@ function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
   return (
     <div
       className={cn(
-        "flex min-h-9 shrink-0 items-center justify-between gap-1 text-muted-foreground/70",
-        collapsed ? "justify-center px-3 pb-3" : "px-3 pb-3 pl-6",
+        "flex min-h-8 shrink-0 items-center justify-between gap-1 text-muted-foreground/70",
+        collapsed ? "justify-center px-3 pb-2" : "px-3 pb-2 pl-6",
       )}
     >
       {!collapsed ? (
@@ -229,7 +229,7 @@ function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
         rel="noopener noreferrer"
         aria-label="View Marzano on GitHub"
         title="View Marzano on GitHub"
-        className="flex size-9 shrink-0 items-center justify-center rounded-md transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
+        className="flex size-8 shrink-0 items-center justify-center rounded-md transition-ui hover:bg-accent hover:text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="size-4" aria-hidden="true">
           <path d="M12 .75a11.25 11.25 0 0 0-3.558 21.923c.563.104.768-.244.768-.542 0-.267-.01-.974-.015-1.912-3.13.68-3.791-1.508-3.791-1.508-.512-1.3-1.25-1.646-1.25-1.646-1.023-.7.078-.686.078-.686 1.13.08 1.725 1.16 1.725 1.16 1.005 1.722 2.637 1.225 3.28.937.102-.728.393-1.225.715-1.507-2.498-.284-5.124-1.25-5.124-5.563 0-1.23.44-2.233 1.16-3.02-.116-.285-.503-1.43.11-2.98 0 0 .944-.302 3.095 1.153a10.78 10.78 0 0 1 5.634 0c2.149-1.455 3.092-1.153 3.092-1.153.615 1.55.228 2.695.112 2.98.722.787 1.158 1.79 1.158 3.02 0 4.324-2.63 5.276-5.136 5.554.404.35.765 1.04.765 2.097 0 1.514-.014 2.736-.014 3.107 0 .3.203.65.774.54A11.251 11.251 0 0 0 12 .75Z" />
@@ -241,8 +241,8 @@ function SidebarProjectLinks({ collapsed }: { collapsed: boolean }) {
 
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className="flex h-16 shrink-0 items-center gap-2.5 px-4">
-      <BrandMark className="size-8 text-primary" />
+    <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+      <BrandMark className="size-7 text-primary" />
       <span
         className={cn(
           "truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground",
@@ -267,7 +267,7 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
   return (
     <nav
       aria-label="Views"
-      className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3"
+      className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-3"
     >
       {items.map((item) => {
         const active = item.id === activeId;
@@ -281,8 +281,8 @@ function SidebarNav({ items, activeId, onSelect, collapsed }: SidebarNavProps) {
             aria-current={active ? "page" : undefined}
             title={collapsed ? item.label : undefined}
             className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-ui outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
-              collapsed && "flex-col justify-center gap-0.5 px-0",
+              "flex min-h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-ui outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 pointer-coarse:min-h-10",
+              collapsed && "min-h-10 flex-col justify-center gap-0.5 px-0",
               active
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -382,7 +382,7 @@ function AppSidebar({
         data-collapsed={collapsed ? "" : undefined}
         className={cn(
           "group/rail sticky top-0 hidden h-dvh shrink-0 self-start overflow-hidden border-r border-border bg-card transition-[width] duration-base ease-out-cubic lg:block",
-          collapsed ? "w-[4.125rem]" : "w-64",
+          collapsed ? "w-[4.125rem]" : "w-56",
         )}
       >
         {/* Laid out at the width it is heading for, and only revealed or
@@ -392,7 +392,7 @@ function AppSidebar({
             row whose centred icon lands where the wide row's left-aligned one
             already is: the edge moves, the icons never do. */}
         <div
-          className={cn("flex h-full flex-col", narrow ? "w-[4.125rem]" : "w-64")}
+          className={cn("flex h-full flex-col", narrow ? "w-[4.125rem]" : "w-56")}
         >
           <SidebarBrand collapsed={narrow} />
           <SidebarNav
@@ -402,7 +402,7 @@ function AppSidebar({
             collapsed={narrow}
           />
           <SidebarProjectLinks collapsed={narrow} />
-          <div className="flex shrink-0 flex-col gap-1 border-t border-border p-3">
+          <div className="flex shrink-0 flex-col gap-0.5 border-t border-border p-3">
             {footerActions?.(narrow)}
             <SidebarThemeToggle
               theme={theme}
@@ -430,7 +430,7 @@ function AppSidebar({
       </aside>
 
       <Sheet open={menuOpen} onOpenChange={onMenuOpenChange}>
-        <SheetContent side="left" className="w-[17rem] max-w-[85vw] bg-card dark:bg-card lg:hidden">
+        <SheetContent side="left" className="w-[15rem] max-w-[85vw] bg-card dark:bg-card lg:hidden">
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <SheetDescription className="sr-only">
             Switch between your task views.
@@ -446,7 +446,7 @@ function AppSidebar({
             }}
           />
           <SidebarProjectLinks collapsed={false} />
-          <div className="flex shrink-0 flex-col gap-1 border-t border-border p-3">
+          <div className="flex shrink-0 flex-col gap-0.5 border-t border-border p-3">
             {footerActions?.(false)}
             <SidebarThemeToggle
               theme={theme}

@@ -3,7 +3,7 @@ import { ChevronDown, FileText, ListChecks } from "lucide-react";
 
 import { MarkdownDescription } from "@/components/markdown-description";
 import { Checkbox, CheckboxIndicator } from "@/components/ui/checkbox";
-import type { Task } from "@/lib/tasks";
+import { hasTaskDetails, type Task } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
 type Section = "description" | "subtasks";
@@ -46,7 +46,7 @@ function TaskDetails({
     description: false,
     subtasks: false,
   });
-  if (!hasDescription(task) && task.subtasks.length === 0) {
+  if (!hasTaskDetails(task)) {
     return <div className={className}>{children}</div>;
   }
 
@@ -88,14 +88,14 @@ function DetailsToggle({
       aria-label={label}
       onClick={() => toggle(section)}
       className={cn(
-        "-mx-1.5 -my-1 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-ui outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
+        "-mx-1.5 -my-0.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-ui outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70",
         expanded && "text-foreground",
       )}
     >
       {children}
       <ChevronDown
         aria-hidden="true"
-        className={cn("size-4 shrink-0 transition-ui", expanded && "rotate-180")}
+        className={cn("size-3.5 shrink-0 transition-ui", expanded && "rotate-180")}
       />
     </button>
   );
@@ -103,7 +103,7 @@ function DetailsToggle({
 
 /** The two toggles for the meta line; each renders only when it has something to open. */
 function TaskDetailsTrigger({ task }: { task: Task }) {
-  if (!hasDescription(task) && task.subtasks.length === 0) return null;
+  if (!hasTaskDetails(task)) return null;
   const completed = task.subtasks.filter(
     (subtask) => subtask.completedAt !== null,
   ).length;
@@ -115,13 +115,13 @@ function TaskDetailsTrigger({ task }: { task: Task }) {
           section="description"
           label={`Description of ${task.title}`}
         >
-          <FileText aria-hidden="true" className="size-4 shrink-0" />
+          <FileText aria-hidden="true" className="size-3.5 shrink-0" />
           Description
         </DetailsToggle>
       ) : null}
       {task.subtasks.length > 0 ? (
         <DetailsToggle section="subtasks" label={`Subtasks of ${task.title}`}>
-          <ListChecks aria-hidden="true" className="size-4 shrink-0" />
+          <ListChecks aria-hidden="true" className="size-3.5 shrink-0" />
           <span className="tabular-nums">
             {completed}/{task.subtasks.length}
             <span className="sr-only"> subtasks completed</span>
@@ -151,7 +151,7 @@ function TaskDetailsContent({
   if (!showDescription && !showSubtasks) return null;
 
   return (
-    <div className={cn("flex min-w-0 flex-col gap-4 pb-3.5 sm:pb-4", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-3 pb-2.5 sm:pb-3", className)}>
       {showDescription ? (
         <div id={`${id}-description`} className="min-w-0">
           <MarkdownDescription source={task.description} />
@@ -161,13 +161,13 @@ function TaskDetailsContent({
         <ul
           id={`${id}-subtasks`}
           aria-label={`Subtasks of ${task.title}`}
-          className="flex min-w-0 flex-col gap-3"
+          className="flex min-w-0 flex-col gap-1.5"
         >
           {task.subtasks.map((subtask) => (
             <li key={subtask.id} className="flex min-w-0 items-start gap-2">
               {onSubtaskComplete ? (
                 <Checkbox
-                  className="-ml-3 -mt-2.5"
+                  className="-ml-2 -mt-2 pointer-coarse:-ml-2.5 pointer-coarse:-mt-2.5"
                   checked={subtask.completedAt !== null}
                   onCheckedChange={(checked) =>
                     onSubtaskComplete(subtask.id, checked)
@@ -186,7 +186,7 @@ function TaskDetailsContent({
               )}
               <p
                 className={cn(
-                  "min-w-0 flex-1 break-words text-sm leading-6",
+                  "min-w-0 flex-1 break-words text-sm leading-5",
                   subtask.completedAt !== null &&
                     "text-muted-foreground line-through",
                 )}

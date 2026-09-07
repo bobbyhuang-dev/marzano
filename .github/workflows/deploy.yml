@@ -39,6 +39,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Verify storage and upgrade safety
+        run: pnpm test:storage
+
       - name: Build
         run: pnpm build
 

@@ -2,8 +2,6 @@ import {
   type CSSProperties,
   type FormEvent,
   type ReactNode,
-  useCallback,
-  useEffect,
   useId,
   useRef,
   useState,
@@ -30,9 +28,10 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
-  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -149,19 +148,19 @@ function minuteOptions(minutes: number): number[] {
 }
 
 // The narrow dialog width is derived from the calendar: 7 day cells of 3.25rem
-// plus the 1.5rem section padding on each side (7 * 3.25rem + 3rem = 25.75rem).
-// Below that width the cells shrink to keep filling the padded content box, so
-// every section -- header, quick select, calendar, time and footer -- shares
-// the same insets. From `md` up the quick select and the time move beside the
+// plus the 1.25rem gutter on each side (7 * 3.25rem + 2.5rem = 25.25rem).
+// Below that width the cells shrink to keep filling the content box, so every
+// row -- header, quick select, calendar, time and footer -- shares the same
+// insets. From `md` up the quick select and the time move beside the
 // calendar, and the extra width is theirs.
 //
 // Rows give height back on short screens. How much room the rest of the dialog
 // takes depends on the layout, so the sections around the calendar are
 // measured by `--due-dialog-surround`, set per breakpoint on the layout below:
-// stacked, they need roughly 36rem; side by side, only the header, the footer
+// stacked, they need roughly 34rem; side by side, only the header, the footer
 // and the calendar's own chrome remain above and below it.
 const CALENDAR_STYLE = {
-  "--calendar-cell-size": "clamp(2.5rem, calc((100vw - 2.25rem) / 7), 3.25rem)",
+  "--calendar-cell-size": "clamp(2.5rem, calc((100vw - 2.75rem) / 7), 3.25rem)",
   "--calendar-cell-height":
     "clamp(2.75rem, calc((100dvh - var(--due-dialog-surround)) / 7), var(--calendar-cell-size))",
 } as CSSProperties;
@@ -186,38 +185,9 @@ function DueDatePickerDialog({
   const [time, setTime] = useState("");
   const [error, setError] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [overflow, setOverflow] = useState({ above: false, below: false });
   const timeId = useId();
   const errorId = `${timeId}-error`;
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  const syncOverflow = useCallback(() => {
-    const area = scrollAreaRef.current;
-    if (!area) return;
-
-    const above = area.scrollTop > 1;
-    const below = area.scrollTop + area.clientHeight < area.scrollHeight - 1;
-
-    setOverflow((current) =>
-      current.above === above && current.below === below
-        ? current
-        : { above, below },
-    );
-  }, []);
-
-  useEffect(() => {
-    const area = scrollAreaRef.current;
-    if (!open || !area) return;
-
-    syncOverflow();
-
-    const observer = new ResizeObserver(syncOverflow);
-    observer.observe(area);
-    if (area.firstElementChild) observer.observe(area.firstElementChild);
-
-    return () => observer.disconnect();
-  }, [open, syncOverflow]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -300,13 +270,14 @@ function DueDatePickerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-0.25rem)] max-w-[25.75rem] flex-col gap-0 overflow-hidden p-0 md:max-w-[46rem]"
+        className="w-[calc(100%-0.25rem)] max-w-[25.25rem] md:max-w-[46rem]"
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, titleRef.current)
         }
       >
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
-          <DialogHeader className="shrink-0 p-4 pb-3 min-[420px]:p-6 min-[420px]:pb-4">
+          <DialogHeader>
             <DialogTitle
               ref={titleRef}
               tabIndex={-1}
@@ -314,100 +285,87 @@ function DueDatePickerDialog({
             >
               {title}
             </DialogTitle>
-            <DialogDescription>
-              Pick a day. A time is optional.
-            </DialogDescription>
           </DialogHeader>
 
-          {/* Only the middle scrolls, so the title and the actions stay in view
-              when the dialog runs out of height. */}
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* The scroller takes its height from flex, not `h-full`: the form
-                above it is sized by its own content, so a percentage height has
-                nothing definite to resolve against and would grow to fit the
-                content instead -- spilling over the actions below it. */}
-            <div
-              ref={scrollAreaRef}
-              onScroll={syncOverflow}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-            >
-              {/* Stacked, the sections read top to bottom in source order:
-                  quick select, calendar, time. From `md` the same three become
-                  a two-column grid with the calendar spanning the left and the
-                  other two stacked on the right; the grid placement classes are
-                  what moves them, so the tab order is unchanged. */}
-              <div className="[--due-dialog-surround:36rem] md:grid md:grid-cols-[auto_minmax(0,1fr)] md:border-t md:border-border md:[--due-dialog-surround:19rem]">
-                <div className="border-y border-border bg-muted/35 p-4 min-[420px]:px-6 md:col-start-2 md:row-start-1 md:border-y-0 md:border-b md:border-l md:p-5">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">
-                    Quick select
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
-                    {QUICK_PICKS.map((pick) => {
-                      const date = pick.resolve(today);
-                      const active =
-                        selectedDate !== undefined &&
-                        isSameDay(selectedDate, date);
+          <DialogBody>
+            {/* Stacked, the sections read top to bottom in source order: quick
+                select, calendar, time. From `md` the same three become a
+                two-column grid with the calendar spanning the left and the
+                other two stacked on the right, meeting at the calendar's
+                middle; the grid placement classes are what moves them, so the
+                tab order is unchanged. Space is the only thing between them:
+                each section is recognisable on its own, so no rule or tint is
+                needed to say where one ends. */}
+            <div className="grid gap-y-4 [--due-dialog-surround:34rem] md:grid-cols-[auto_minmax(0,1fr)] md:gap-x-8 md:gap-y-6 md:[--due-dialog-surround:17rem]">
+              <div
+                role="group"
+                aria-label="Quick select"
+                className="grid grid-cols-2 gap-2 md:col-start-2 md:row-start-1 md:grid-cols-1 md:self-end"
+              >
+                {QUICK_PICKS.map((pick) => {
+                  const date = pick.resolve(today);
+                  const active =
+                    selectedDate !== undefined && isSameDay(selectedDate, date);
 
-                      return (
-                        <Button
-                          key={pick.id}
-                          type="button"
-                          variant="secondary"
-                          aria-pressed={active}
-                          onClick={() => selectDate(date)}
+                  return (
+                    <Button
+                      key={pick.id}
+                      type="button"
+                      variant="secondary"
+                      aria-pressed={active}
+                      onClick={() => selectDate(date)}
+                      className={cn(
+                        "h-auto justify-start gap-2.5 px-3 py-2 text-left",
+                        active &&
+                          "bg-primary text-primary-foreground hover:bg-primary/90",
+                      )}
+                    >
+                      <pick.icon aria-hidden="true" />
+                      <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-baseline md:justify-between md:gap-3">
+                        <span className="truncate">{pick.label(today)}</span>
+                        <span
                           className={cn(
-                            "h-auto justify-start gap-2.5 px-3 py-2 text-left",
-                            active &&
-                              "bg-primary text-primary-foreground hover:bg-primary/90",
+                            "truncate text-xs font-normal",
+                            active
+                              ? "text-primary-foreground/75"
+                              : "text-muted-foreground",
                           )}
                         >
-                          <pick.icon aria-hidden="true" />
-                          <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-baseline md:justify-between md:gap-3">
-                            <span className="truncate">{pick.label(today)}</span>
-                            <span
-                              className={cn(
-                                "truncate text-xs font-normal",
-                                active
-                                  ? "text-primary-foreground/75"
-                                  : "text-muted-foreground",
-                              )}
-                            >
-                              {format(date, "EEE, MMM d")}
-                            </span>
-                          </span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex justify-center px-4 py-3 min-[420px]:px-6 min-[420px]:py-4 md:col-start-1 md:row-span-2 md:row-start-1 md:items-center md:py-5">
-                  <Calendar
-                    className="p-0"
-                    style={CALENDAR_STYLE}
-                    mode="single"
-                    selected={selectedDate}
-                    month={visibleMonth}
-                    onMonthChange={setVisibleMonth}
-                    onSelect={(date) => {
-                      if (date) selectDate(date);
-                    }}
-                    fixedWeeks
-                    startMonth={earliestMonth}
-                    disabled={{ before: today }}
-                    timeZone={timeZone}
-                  />
-                </div>
-
-                <div className="grid gap-3 border-t border-border p-4 min-[420px]:p-6 md:col-start-2 md:row-start-2 md:border-t-0 md:border-l md:p-5">
-                  <div className="grid gap-2">
-                    <Label htmlFor={timeId}>
-                      Time{" "}
-                      <span className="font-normal text-muted-foreground">
-                        (optional)
+                          {format(date, "EEE, MMM d")}
+                        </span>
                       </span>
-                    </Label>
-                    {/* Hours and minutes can be typed or picked from the list;
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-center md:col-start-1 md:row-span-2 md:row-start-1 md:items-center">
+                <Calendar
+                  className="p-0"
+                  style={CALENDAR_STYLE}
+                  mode="single"
+                  selected={selectedDate}
+                  month={visibleMonth}
+                  onMonthChange={setVisibleMonth}
+                  onSelect={(date) => {
+                    if (date) selectDate(date);
+                  }}
+                  fixedWeeks
+                  startMonth={earliestMonth}
+                  disabled={{ before: today }}
+                  timeZone={timeZone}
+                />
+              </div>
+
+              <div className="grid gap-3 md:col-start-2 md:row-start-2 md:self-start">
+                <div className="grid gap-2">
+                  <Label htmlFor={timeId}>
+                    Time{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  {/* Hours and minutes can be typed or picked from the list;
                         the clear control shares the row so the field costs no
                         extra height.
 
@@ -456,69 +414,52 @@ function DueDatePickerDialog({
                       {/* The app's own list, never a native <select>: the
                           platform would open its own picker and draw its own
                           focus box over the field. */}
-                      <OptionCombobox
-                        className="w-20"
-                        aria-label="AM or PM"
-                        disabled={!selectedDate}
-                        value={hasTime ? parts.meridiem : null}
-                        options={MERIDIEM_OPTIONS}
-                        onValueChange={(meridiem) =>
-                          updateTime({ meridiem })
-                        }
-                      />
-                      <button
-                        type="button"
-                        disabled={!hasTime}
-                        aria-label="Clear time"
-                        onClick={() => {
-                          setTime("");
-                          setError("");
-                        }}
-                        className={cn(
-                          "relative flex size-12 shrink-0 items-center justify-center text-muted-foreground transition-transform active:scale-90 disabled:pointer-events-none disabled:opacity-40 disabled:active:scale-100",
-                          SEGMENT_FOCUS_RING,
-                        )}
-                      >
-                        <X className="size-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                    {error ? (
-                      <p
-                        id={errorId}
-                        role="alert"
-                        className="text-sm text-destructive"
-                      >
-                        {error}
-                      </p>
-                    ) : null}
+                    <OptionCombobox
+                      className="w-20"
+                      aria-label="AM or PM"
+                      disabled={!selectedDate}
+                      value={hasTime ? parts.meridiem : null}
+                      options={MERIDIEM_OPTIONS}
+                      onValueChange={(meridiem) => updateTime({ meridiem })}
+                    />
+                    <button
+                      type="button"
+                      disabled={!hasTime}
+                      aria-label="Clear time"
+                      onClick={() => {
+                        setTime("");
+                        setError("");
+                      }}
+                      className={cn(
+                        "relative flex size-10 shrink-0 items-center justify-center text-muted-foreground transition-transform active:scale-90 disabled:pointer-events-none disabled:opacity-40 disabled:active:scale-100",
+                        SEGMENT_FOCUS_RING,
+                      )}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </button>
                   </div>
-                  <p className="text-sm text-muted-foreground" aria-live="polite">
-                    {summary}
-                  </p>
+                  {error ? (
+                    <p
+                      id={errorId}
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
+                      {error}
+                    </p>
+                  ) : null}
                 </div>
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                  {summary}
+                </p>
               </div>
             </div>
+          </DialogBody>
 
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-background to-transparent transition-opacity duration-150",
-                overflow.above ? "opacity-100" : "opacity-0",
-              )}
-            />
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent transition-opacity duration-150",
-                overflow.below ? "opacity-100" : "opacity-0",
-              )}
-            />
-          </div>
-
-          <div className="grid shrink-0 gap-2 border-t border-border p-4 min-[420px]:flex min-[420px]:items-center min-[420px]:justify-between min-[420px]:p-6">
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
+              className="mr-auto"
               disabled={!selectedDate}
               onClick={() => {
                 setSelectedDate(undefined);
@@ -528,13 +469,11 @@ function DueDatePickerDialog({
             >
               Clear date
             </Button>
-            <div className="grid grid-cols-2 gap-2 min-[420px]:flex">
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Save due date</Button>
-            </div>
-          </div>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit">Save due date</Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

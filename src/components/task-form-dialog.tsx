@@ -22,7 +22,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -154,13 +154,14 @@ function TaskFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 md:max-w-[56rem]"
+        className="max-w-xl md:max-w-[56rem]"
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, dialogTitleRef.current)
         }
       >
         <form className="flex min-h-0 flex-col" onSubmit={handleSubmit}>
-          <DialogHeader className="shrink-0 p-4 pr-14 min-[420px]:p-6 min-[420px]:pr-16">
+          <DialogHeader>
             <DialogTitle
               ref={dialogTitleRef}
               tabIndex={-1}
@@ -168,17 +169,12 @@ function TaskFormDialog({
             >
               {editing ? "Edit task" : "New task"}
             </DialogTitle>
-            <DialogDescription>
-              {editing
-                ? "Update the details or break the work into smaller steps."
-                : "Name it, add details, and break it into smaller steps."}
-            </DialogDescription>
           </DialogHeader>
-          {/* Like the due-date picker, only the middle scrolls. Wide screens
-              put the checklist beside the details instead of below them. */}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-y border-border">
-            <div className="md:grid md:grid-cols-2">
-              <FieldGroup className="p-4 min-[420px]:p-6">
+          {/* Wide screens put the checklist beside the details instead of
+              below them; the gap between the columns is the only divider. */}
+          <DialogBody>
+            <div className="grid gap-6 md:grid-cols-2 md:gap-x-10">
+              <FieldGroup>
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor={fieldId}>Task name</FieldLabel>
                   <Input
@@ -240,7 +236,7 @@ function TaskFormDialog({
                   trigger={<TagSelectTrigger tags={selectedTags} />}
                 />
               </FieldGroup>
-              <FieldGroup className="border-t border-border p-4 min-[420px]:p-6 md:border-l md:border-t-0">
+              <FieldGroup>
                 <FieldSet>
                   <FieldLegend>Subtasks</FieldLegend>
                   {subtasks.length === 0 ? (
@@ -265,6 +261,7 @@ function TaskFormDialog({
                   ))}
                   <Button
                     variant="outline"
+                    size="sm"
                     className="self-start"
                     onClick={() =>
                       setSubtasks((current) => [...current, createSubtask()])
@@ -276,8 +273,8 @@ function TaskFormDialog({
                 </FieldSet>
               </FieldGroup>
             </div>
-          </div>
-          <DialogFooter className="grid shrink-0 grid-cols-2 p-4 min-[420px]:p-6 sm:flex">
+          </DialogBody>
+          <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>

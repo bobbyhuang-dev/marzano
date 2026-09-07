@@ -283,7 +283,7 @@ function DurationPicker({
         leftRadius={SEGMENT_RADIUS}
         rightRadius={innerRadius}
         style={{ paddingRight: innerPadRight }}
-        className="flex h-12 items-center gap-1 bg-muted pl-2"
+        className="flex h-10 items-center gap-1 bg-muted pl-2"
       >
         <DurationField
           value={hoursText}
@@ -313,7 +313,7 @@ function DurationPicker({
           paddingLeft: innerPadLeft,
           paddingRight: innerPadRight,
         }}
-        className="flex h-12 items-center gap-1 bg-muted"
+        className="flex h-10 items-center gap-1 bg-muted"
       >
         <DurationField
           value={minutesText}
@@ -348,7 +348,7 @@ function DurationPicker({
           aria-pressed={isEditing}
           aria-label={isEditing ? "Save duration" : "Edit duration"}
           className={cn(
-            "flex h-12 w-12 items-center justify-center bg-muted text-muted-foreground",
+            "flex h-10 w-10 items-center justify-center bg-muted text-muted-foreground",
             "transition-transform active:scale-90 disabled:active:scale-100",
             SEGMENT_FOCUS_RING,
           )}

@@ -39,7 +39,8 @@ function TagActions({
         trigger={
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
+            className="text-muted-foreground"
             aria-label={`Edit ${tag.name}`}
             title="Edit tag"
           >
@@ -78,12 +79,14 @@ function TagsPage({
 
   return (
     <>
-      <div className="grid gap-3">
-        <div>
+      {/* The heading and its one action share a line: the page's job is the
+          list below, and a full-width button would announce the form instead. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold tracking-[-0.01em] text-foreground">
             Create a tag
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Group tasks by subject, then find them together later.
           </p>
         </div>
@@ -91,7 +94,7 @@ function TagsPage({
           tags={tags}
           onSubmit={onCreateTag}
           trigger={
-            <Button className="w-full sm:w-auto">
+            <Button className="shrink-0">
               <Plus aria-hidden="true" />
               New tag
             </Button>
@@ -99,10 +102,10 @@ function TagsPage({
         />
       </div>
 
-      <section className="mt-8" aria-labelledby="tags-heading">
+      <section className="mt-6" aria-labelledby="tags-heading">
         <h2
           id="tags-heading"
-          className="mb-3 text-sm font-semibold tracking-[-0.01em] text-foreground"
+          className="mb-2 text-sm font-semibold tracking-[-0.01em] text-foreground"
         >
           Your tags
         </h2>
@@ -114,19 +117,19 @@ function TagsPage({
               description="Create your first tag above, then add it to any task."
             />
           ) : (
-            <ul className="-mt-2 divide-y divide-border" aria-label="Tag list">
+            <ul className="-mt-1 divide-y divide-border" aria-label="Tag list">
               {sorted.map((tag) => {
                 const count = counts.get(tag.id) ?? { open: 0, total: 0 };
 
                 return (
                   <li
                     key={tag.id}
-                    className="flex items-center gap-1 py-2"
+                    className="flex items-center gap-0.5 py-1"
                   >
                     <button
                       type="button"
                       onClick={() => onOpenTag(tag.id)}
-                      className="group -ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left transition-ui hover:bg-accent/60 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:-ml-3 sm:px-3"
+                      className="group -ml-2 flex min-h-9 min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left transition-ui hover:bg-accent/60 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 pointer-coarse:min-h-10"
                     >
                       <TagChip tag={tag} size="md" />
                       <span className="shrink-0 text-sm text-muted-foreground">
@@ -194,7 +197,7 @@ function TagDetailPage({
   return (
     <>
       <div
-        className="rounded-lg p-5 sm:p-6"
+        className="rounded-lg p-4 sm:p-5"
         // A wash of the tag's own colour, so the page is recognisable before a
         // word of it is read.
         style={{ backgroundColor: tagTint(tag.color, 0.07) }}
@@ -202,7 +205,7 @@ function TagDetailPage({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">
             <TagChip tag={tag} size="lg" />
-            <p className="mt-2.5 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               {tagColorName(tag.color)}
               <span aria-hidden="true" className="px-1.5">
                 ·
@@ -218,7 +221,7 @@ function TagDetailPage({
               ) : null}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center">
             <TagActions
               tag={tag}
               tags={tags}
@@ -230,10 +233,10 @@ function TagDetailPage({
         </div>
       </div>
 
-      <section className="mt-8" aria-labelledby="tag-tasks-heading">
+      <section className="mt-6" aria-labelledby="tag-tasks-heading">
         <h2
           id="tag-tasks-heading"
-          className="mb-3 text-sm font-semibold tracking-[-0.01em] text-foreground"
+          className="mb-2 text-sm font-semibold tracking-[-0.01em] text-foreground"
         >
           Tasks with this tag
         </h2>

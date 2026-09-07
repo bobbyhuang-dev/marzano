@@ -26,7 +26,7 @@ function DeleteTaskDialog({ task, onDelete, description }: DeleteTaskDialogProps
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label={`Delete ${task.title}`}
           title="Delete task"

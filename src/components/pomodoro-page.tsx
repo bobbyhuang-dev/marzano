@@ -9,6 +9,7 @@ import {
   Settings2,
   SkipForward,
   Trash2,
+  Volume2,
 } from "lucide-react";
 
 import { EmptyPanel } from "@/components/empty-panel";
@@ -28,16 +29,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
   DurationPicker,
   type DurationValue,
 } from "@/components/ui/duration-picker";
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -114,7 +114,7 @@ function SectionHeading({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+    <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
       <h2
         id={id}
         className="text-sm font-semibold tracking-[-0.01em] text-foreground"
@@ -156,9 +156,13 @@ function TimerDial({
       aria-live="off"
       aria-atomic="true"
       aria-label={`${PHASE_LABELS[phase]}, ${STATUS_LABELS[status]}, ${time} remaining`}
-      className="relative flex size-56 shrink-0 items-center justify-center sm:size-64"
+      className="relative flex size-52 shrink-0 items-center justify-center sm:size-56"
     >
-      <svg viewBox="0 0 120 120" aria-hidden="true" className="size-full -rotate-90">
+      <svg
+        viewBox="0 0 120 120"
+        aria-hidden="true"
+        className="size-full -rotate-90"
+      >
         <circle
           cx="60"
           cy="60"
@@ -217,7 +221,6 @@ function TaskPickerDialog({
   selectedTaskId,
   tagsById,
   onSelect,
-  running,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -225,22 +228,20 @@ function TaskPickerDialog({
   selectedTaskId: string | null;
   tagsById: Map<string, Tag>;
   onSelect: (taskId: string) => void;
-  running: boolean;
 }) {
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] max-w-lg grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
-        <DialogHeader className="px-6 pb-4 pr-14 pt-6">
+      <DialogContent
+        className="max-h-[min(42rem,calc(100dvh-2rem))] max-w-lg"
+        aria-describedby={undefined}
+      >
+        <DialogHeader>
           <DialogTitle>Choose a focus task</DialogTitle>
-          <DialogDescription>
-            {running ? "The timer keeps running." : "Pick one for this round."}
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-3 pb-3">
+        <DialogBody className="px-3 pb-3">
           {tasks.length === 0 ? (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-3">
               <EmptyPanel
                 icon={ListTodo}
                 title="No open tasks"
@@ -275,10 +276,12 @@ function TaskPickerDialog({
                           : "border-input",
                       )}
                     >
-                      {selected ? <Check strokeWidth={3} className="size-3.5" /> : null}
+                      {selected ? (
+                        <Check strokeWidth={3} className="size-3.5" />
+                      ) : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words text-sm font-medium leading-6 text-foreground">
+                      <span className="block break-words text-sm font-medium leading-5 text-foreground">
                         {task.title}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
@@ -295,7 +298,7 @@ function TaskPickerDialog({
               })}
             </div>
           )}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );
@@ -357,28 +360,51 @@ function DurationField({
         hoursAriaLabel={`${label} hours`}
         minutesAriaLabel={`${label} minutes`}
         aria-labelledby={labelId}
-        onChange={(duration) => onChange(duration.hours * 60 + duration.minutes)}
+        onChange={(duration) =>
+          onChange(duration.hours * 60 + duration.minutes)
+        }
       />
     </div>
   );
 }
 
 /** Lives beside the page title, the way the sidebar's own controls do. */
+const VOLUME_KEYS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
+function currentNotificationPermission():
+  NotificationPermission | "unsupported" {
+  return typeof Notification === "undefined"
+    ? "unsupported"
+    : Notification.permission;
+}
+
 function PomodoroSettingsDialog({
   controller,
 }: {
   controller: PomodoroController;
 }) {
-  const { settings, updateSettings, requestNotificationPermission } = controller;
+  const {
+    settings,
+    updateSettings,
+    requestNotificationPermission,
+    previewAlertSound,
+    alertVolume,
+    setAlertVolume,
+  } = controller;
+  const volumeId = useId();
+  const volumePercent = Math.round(alertVolume * 100);
   const intervalId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [permission, setPermission] = useState<
-    NotificationPermission | "unsupported"
-  >(() =>
-    typeof Notification === "undefined"
-      ? "unsupported"
-      : Notification.permission,
-  );
+  const [permission, setPermission] = useState(currentNotificationPermission);
 
   const requestPermission = async () => {
     const nextPermission = await requestNotificationPermission();
@@ -398,7 +424,13 @@ function PomodoroSettingsDialog({
   };
 
   return (
-    <Dialog>
+    // Starting a round can ask for the permission too, so the answer is read
+    // again each time the dialog opens rather than once when the page mounts.
+    <Dialog
+      onOpenChange={(open) => {
+        if (open) setPermission(currentNotificationPermission());
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -411,12 +443,13 @@ function PomodoroSettingsDialog({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="flex max-h-[calc(100dvh-2rem)] max-w-lg flex-col gap-0 overflow-hidden p-0"
+        className="max-w-lg"
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, titleRef.current)
         }
       >
-        <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pr-14 pt-6">
+        <DialogHeader>
           <DialogTitle
             ref={titleRef}
             tabIndex={-1}
@@ -424,116 +457,176 @@ function PomodoroSettingsDialog({
           >
             Pomodoro settings
           </DialogTitle>
-          <DialogDescription>
-            Changes apply from the next round and save as you make them.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
-          <SettingsSection title="Durations">
-            <div className="mt-3 space-y-4">
-              <DurationField
-                label="Focus"
-                value={settings.focusMinutes}
-                onChange={(focusMinutes) => updateSettings({ focusMinutes })}
-              />
-              <DurationField
-                label="Short break"
-                value={settings.shortBreakMinutes}
-                onChange={(shortBreakMinutes) =>
-                  updateSettings({ shortBreakMinutes })
-                }
-              />
-              <DurationField
-                label="Long break"
-                value={settings.longBreakMinutes}
-                onChange={(longBreakMinutes) =>
-                  updateSettings({ longBreakMinutes })
-                }
-              />
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
-                <Label htmlFor={intervalId}>Long break after</Label>
-                <NumberCombobox
-                  id={intervalId}
-                  className="w-36"
-                  value={settings.longBreakInterval}
-                  options={INTERVAL_OPTIONS}
-                  min={2}
-                  max={12}
-                  formatValue={(rounds) => `${rounds} rounds`}
-                  onValueChange={(longBreakInterval) =>
-                    updateSettings({ longBreakInterval })
+        {/* Nothing to submit: every field saves as it changes, and the next
+            round picks the values up, so the dialog ends with the fields. */}
+        <DialogBody className="pb-4">
+          <div className="grid gap-7">
+            <SettingsSection title="Durations">
+              <div className="mt-3 space-y-4">
+                <DurationField
+                  label="Focus"
+                  value={settings.focusMinutes}
+                  onChange={(focusMinutes) => updateSettings({ focusMinutes })}
+                />
+                <DurationField
+                  label="Short break"
+                  value={settings.shortBreakMinutes}
+                  onChange={(shortBreakMinutes) =>
+                    updateSettings({ shortBreakMinutes })
                   }
-                  aria-label="Focus rounds before a long break"
+                />
+                <DurationField
+                  label="Long break"
+                  value={settings.longBreakMinutes}
+                  onChange={(longBreakMinutes) =>
+                    updateSettings({ longBreakMinutes })
+                  }
+                />
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
+                  <Label htmlFor={intervalId}>Long break after</Label>
+                  <NumberCombobox
+                    id={intervalId}
+                    className="w-36"
+                    value={settings.longBreakInterval}
+                    options={INTERVAL_OPTIONS}
+                    min={2}
+                    max={12}
+                    formatValue={(rounds) => `${rounds} rounds`}
+                    onValueChange={(longBreakInterval) =>
+                      updateSettings({ longBreakInterval })
+                    }
+                    aria-label="Focus rounds before a long break"
+                  />
+                </div>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="Session flow">
+              <div className="mt-1 grid">
+                <SettingToggle
+                  title="Auto-start breaks"
+                  description="Begin the break as soon as focus ends."
+                  checked={settings.autoStartBreaks}
+                  onCheckedChange={(autoStartBreaks) =>
+                    updateSettings({ autoStartBreaks })
+                  }
+                />
+                <SettingToggle
+                  title="Auto-start focus"
+                  description="Begin the next round as soon as the break ends."
+                  checked={settings.autoStartFocus}
+                  onCheckedChange={(autoStartFocus) =>
+                    updateSettings({ autoStartFocus })
+                  }
                 />
               </div>
-            </div>
-          </SettingsSection>
+            </SettingsSection>
 
-          <SettingsSection title="Session flow">
-            <div className="divide-y divide-border">
-              <SettingToggle
-                title="Auto-start breaks"
-                description="Begin the break as soon as focus ends."
-                checked={settings.autoStartBreaks}
-                onCheckedChange={(autoStartBreaks) =>
-                  updateSettings({ autoStartBreaks })
-                }
-              />
-              <SettingToggle
-                title="Auto-start focus"
-                description="Begin the next round as soon as the break ends."
-                checked={settings.autoStartFocus}
-                onCheckedChange={(autoStartFocus) =>
-                  updateSettings({ autoStartFocus })
-                }
-              />
-            </div>
-          </SettingsSection>
-
-          <SettingsSection title="Notifications">
-            <div className="divide-y divide-border">
-              <SettingToggle
-                title="Round notifications"
-                description="A chime and an in-app alert when a round finishes."
-                checked={settings.notifications}
-                onCheckedChange={(notifications) =>
-                  updateSettings({ notifications })
-                }
-              />
-              <SettingToggle
-                title="Desktop alerts"
-                description={
-                  !settings.notifications
-                    ? "Turn on round notifications to use desktop alerts."
-                    : permission === "denied"
-                      ? "Blocked in your browser settings. In-app alerts still work."
-                      : permission === "unsupported"
-                        ? "Not supported here. In-app alerts still work."
-                        : permission === "default"
-                          ? "Turn on to allow system alerts for finished rounds."
-                          : settings.desktopAlerts
-                            ? "A system alert waits for you when a round finishes."
-                            : "System alerts are turned off."
-                }
-                checked={settings.desktopAlerts && permission === "granted"}
-                onCheckedChange={changeDesktopAlerts}
-                disabled={
-                  !settings.notifications ||
-                  permission === "denied" ||
-                  permission === "unsupported"
-                }
-              />
-            </div>
-          </SettingsSection>
-        </div>
-
-        <DialogFooter className="shrink-0 border-t border-border px-6 pb-6 pt-4 sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">Saved automatically</p>
-          <DialogClose asChild>
-            <Button>Done</Button>
-          </DialogClose>
-        </DialogFooter>
+            <SettingsSection title="Notifications">
+              <div className="mt-1 grid">
+                <SettingToggle
+                  title="Round notifications"
+                  description="A sound and an in-app alert when a round finishes. Focus and breaks end on different sounds."
+                  checked={settings.notifications}
+                  onCheckedChange={(notifications) =>
+                    updateSettings({ notifications })
+                  }
+                />
+                <div
+                  className={cn(
+                    "flex items-center gap-4 pb-3.5",
+                    !settings.notifications && "opacity-60",
+                  )}
+                >
+                  <label
+                    htmlFor={volumeId}
+                    className="shrink-0 text-sm font-medium text-foreground"
+                  >
+                    Volume
+                  </label>
+                  <Slider
+                    id={volumeId}
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={volumePercent}
+                    disabled={!settings.notifications}
+                    aria-valuetext={`${volumePercent}%`}
+                    onChange={(event) =>
+                      setAlertVolume(Number(event.target.value) / 100)
+                    }
+                    // Letting go plays the focus sound at the new level, the
+                    // way a system volume key does, so no second control is
+                    // needed to find out what the number means.
+                    onPointerUp={() => previewAlertSound("focus")}
+                    onKeyUp={(event) => {
+                      if (VOLUME_KEYS.has(event.key))
+                        previewAlertSound("focus");
+                    }}
+                  />
+                  <span className="w-10 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+                    {volumePercent}%
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 pb-3.5",
+                    !settings.notifications && "opacity-60",
+                  )}
+                >
+                  <p className="mr-auto text-sm text-muted-foreground">
+                    Hear them
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!settings.notifications}
+                    onClick={() => previewAlertSound("focus")}
+                  >
+                    <Volume2 aria-hidden="true" />
+                    Focus done
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!settings.notifications}
+                    onClick={() => previewAlertSound("break")}
+                  >
+                    <Volume2 aria-hidden="true" />
+                    Break done
+                  </Button>
+                </div>
+                <SettingToggle
+                  title="Desktop alerts"
+                  description={
+                    !settings.notifications
+                      ? "Turn on round notifications to use desktop alerts."
+                      : permission === "denied"
+                        ? "Blocked in your browser settings. In-app alerts still work."
+                        : permission === "unsupported"
+                          ? "Not supported here. In-app alerts still work."
+                          : permission === "default"
+                            ? "Turn on to allow system alerts for finished rounds."
+                            : settings.desktopAlerts
+                              ? "A system alert waits for you when a round finishes."
+                              : "System alerts are turned off."
+                  }
+                  checked={settings.desktopAlerts && permission === "granted"}
+                  onCheckedChange={changeDesktopAlerts}
+                  disabled={
+                    !settings.notifications ||
+                    permission === "denied" ||
+                    permission === "unsupported"
+                  }
+                />
+              </div>
+            </SettingsSection>
+          </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );
@@ -605,7 +698,7 @@ function Metric({ value, label }: { value: string; label: string }) {
     // A long total ("2 hr 35 min") wraps rather than truncating, so the labels
     // are pushed to the bottom of the row to stay level with each other.
     <div className="flex h-full min-w-0 flex-col">
-      <p className="text-xl font-semibold leading-tight tracking-[-0.03em] tabular-nums text-foreground sm:text-2xl">
+      <p className="text-lg font-semibold leading-tight tracking-[-0.03em] tabular-nums text-foreground sm:text-xl">
         {value}
       </p>
       <p className="mt-auto pt-1 text-xs text-muted-foreground">{label}</p>
@@ -631,12 +724,15 @@ function PomodoroActivity({ controller }: { controller: PomodoroController }) {
       (index === dayRange.length - 1 ? liveDurationMs : 0),
   }));
   const todayHistory = history.filter(
-    ({ endedAt }) => endedAt >= todayStart && isSameDay(new Date(endedAt), today),
+    ({ endedAt }) =>
+      endedAt >= todayStart && isSameDay(new Date(endedAt), today),
   );
   const todayFocusMs =
     todayHistory.reduce((sum, session) => sum + session.durationMs, 0) +
     liveDurationMs;
-  const todaySessions = todayHistory.filter(({ completed }) => completed).length;
+  const todaySessions = todayHistory.filter(
+    ({ completed }) => completed,
+  ).length;
   const todayTaskIds = new Set(
     todayHistory.flatMap(({ allocations }) =>
       allocations.map(({ taskId }) => taskId),
@@ -659,16 +755,16 @@ function PomodoroActivity({ controller }: { controller: PomodoroController }) {
 
   return (
     <>
-      <section className="mt-10" aria-labelledby="today-heading">
+      <section className="mt-8" aria-labelledby="today-heading">
         <SectionHeading id="today-heading" title="Today" />
-        <div className="grid grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-3 gap-4">
           <Metric value={formatFocusDuration(todayFocusMs)} label="Focused" />
           <Metric value={String(todaySessions)} label="Rounds" />
           <Metric value={String(todayTaskIds.size)} label="Tasks" />
         </div>
       </section>
 
-      <section className="mt-10" aria-labelledby="week-heading">
+      <section className="mt-8" aria-labelledby="week-heading">
         <SectionHeading
           id="week-heading"
           title="Last 7 days"
@@ -686,7 +782,7 @@ function PomodoroActivity({ controller }: { controller: PomodoroController }) {
                 `${format(date, "EEEE")}: ${formatFocusDuration(durationMs)}`,
             )
             .join(". ")}`}
-          className="grid h-28 grid-cols-7 gap-2"
+          className="grid h-24 grid-cols-7 gap-2"
         >
           {days.map(({ date, durationMs }, index) => {
             const isToday = index === days.length - 1;
@@ -727,7 +823,7 @@ function PomodoroActivity({ controller }: { controller: PomodoroController }) {
       </section>
 
       {history.length > 0 ? (
-        <section className="mt-10" aria-labelledby="recent-heading">
+        <section className="mt-8" aria-labelledby="recent-heading">
           <SectionHeading
             id="recent-heading"
             title="Recent rounds"
@@ -792,14 +888,14 @@ function PomodoroPage({
           ),
         )
       : 0;
-  const selectedFocusedMs = (selectedTask?.focusedMs ?? 0) + openSelectedSliceMs;
+  const selectedFocusedMs =
+    (selectedTask?.focusedMs ?? 0) + openSelectedSliceMs;
   const progressRound =
     (timer.completedFocusCount % settings.longBreakInterval) + 1;
   const roundHint = isFocus
     ? `Round ${progressRound} of ${settings.longBreakInterval}`
     : "Focus is up next";
-  const hint =
-    timer.status === "paused" ? `Paused · ${roundHint}` : roundHint;
+  const hint = timer.status === "paused" ? `Paused · ${roundHint}` : roundHint;
   const primaryAction = running
     ? "Pause"
     : hasRoundProgress
@@ -825,7 +921,7 @@ function PomodoroPage({
           hint={hint}
         />
 
-        <div className="mt-8 flex items-center gap-1.5">
+        <div className="mt-6 flex items-center gap-1">
           <Button
             size="lg"
             className="min-w-40"
@@ -833,7 +929,11 @@ function PomodoroPage({
             disabled={!running && !canStart}
             onClick={running ? controller.pause : controller.start}
           >
-            {running ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+            {running ? (
+              <Pause aria-hidden="true" />
+            ) : (
+              <Play aria-hidden="true" />
+            )}
             {primaryAction}
           </Button>
           <Button
@@ -861,13 +961,13 @@ function PomodoroPage({
         </div>
 
         {isFocus && !selectedTask ? (
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-3 text-sm text-muted-foreground">
             Pick a focus task below to start the round.
           </p>
         ) : null}
       </div>
 
-      <section className="mt-10" aria-labelledby="focus-task-heading">
+      <section className="mt-8" aria-labelledby="focus-task-heading">
         <SectionHeading
           id="focus-task-heading"
           title={isFocus ? "Focus task" : "Next task"}
@@ -888,26 +988,28 @@ function PomodoroPage({
         {selectedTask ? (
           // The same row the task pages use, so checking it off here means what
           // it means everywhere else.
-          <div className="flex items-start gap-2 sm:gap-3">
+          <div className="flex items-start gap-2">
             <Checkbox
-              className="-ml-3 -mt-2.5"
+              className="-ml-2 -mt-2 pointer-coarse:-ml-2.5 pointer-coarse:-mt-2.5"
               checked={false}
               onCheckedChange={completeCurrentTask}
               aria-label={`Mark ${selectedTask.title} as complete`}
               title="Complete task"
             />
             <div className="min-w-0 flex-1">
-              <p className="break-words text-sm font-medium leading-6 text-foreground">
+              <p className="break-words text-sm font-medium leading-5 text-foreground">
                 {selectedTask.title}
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 <TaskDueDate task={selectedTask} />
                 {selectedFocusedMs > 0 ? (
-                  <p className="text-sm tabular-nums text-muted-foreground">
+                  <p className="text-xs tabular-nums text-muted-foreground">
                     {formatFocusDuration(selectedFocusedMs)} focused
                   </p>
                 ) : null}
-                <TagChipList tags={resolveTags(selectedTask.tagIds, tagsById)} />
+                <TagChipList
+                  tags={resolveTags(selectedTask.tagIds, tagsById)}
+                />
               </div>
             </div>
           </div>
@@ -939,7 +1041,6 @@ function PomodoroPage({
         selectedTaskId={selectedTask?.id ?? null}
         tagsById={tagsById}
         onSelect={controller.selectTask}
-        running={running && isFocus}
       />
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">

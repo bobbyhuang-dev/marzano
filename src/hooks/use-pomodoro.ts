@@ -1,11 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
+import breakCompleteSoundUrl from "@/assets/sounds/break-complete.mp3";
+import focusCompleteSoundUrl from "@/assets/sounds/focus-complete.mp3";
 
 import {
   createInitialTimer,
@@ -14,9 +11,10 @@ import {
   loadPomodoroTimer,
   POMODORO_HISTORY_LIMIT,
   phaseDurationMs,
-  savePomodoroHistory,
-  savePomodoroSettings,
   savePomodoroTimer,
+  loadAlertVolume,
+  saveAlertVolume,
+  toAlertVolume,
   type FocusAllocation,
   type PomodoroPhase,
   type PomodoroSessionRecord,
@@ -64,6 +62,9 @@ export interface PomodoroController {
   requestNotificationPermission: () => Promise<
     NotificationPermission | "unsupported"
   >;
+  previewAlertSound: (sound: AlertSound) => void;
+  alertVolume: number;
+  setAlertVolume: (volume: number) => void;
 }
 
 const TIMER_TICK_MS = 1_000;
@@ -84,32 +85,76 @@ function audioContextConstructor(): AudioContextConstructor | null {
   return audioWindow.AudioContext || audioWindow.webkitAudioContext || null;
 }
 
-function playCompletionChime(context: AudioContext) {
-  const startAt = context.currentTime;
+/**
+ * Two different sounds, so the ear knows which way the round turned without
+ * reading the toast: a short celebration when focus is done, a firmer alert
+ * when the break is over and it is time to come back. Both are Google's
+ * Material product sounds (see src/assets/sounds/LICENSE.md). They are
+ * decoded once into buffers so the moment of the alert costs no fetch, and
+ * the sample level is lifted a little, because these were mastered as UI
+ * sounds for a phone in the hand rather than an alarm for someone who has
+ * walked away from a laptop.
+ */
+export type AlertSound = "focus" | "break";
 
-  [659.25, 880].forEach((frequency, index) => {
-    const toneStartsAt = startAt + index * 0.16;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
+const ALERT_SOUND_URLS: Record<AlertSound, string> = {
+  focus: focusCompleteSoundUrl,
+  break: breakCompleteSoundUrl,
+};
+/**
+ * Full volume is a big lift over the samples as shipped, which were mastered
+ * quietly as phone UI sounds. A limiter after the gain is what makes that
+ * safe: it catches the peaks the lift would otherwise push past full scale,
+ * so the top of the slider is loud rather than distorted. The slider maps to
+ * gain on a square curve, because equal steps of amplitude do not sound like
+ * equal steps of loudness and a linear knob does everything in its top third.
+ */
+const ALERT_MAX_GAIN = 5;
 
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, toneStartsAt);
-    gain.gain.setValueAtTime(0.0001, toneStartsAt);
-    gain.gain.exponentialRampToValueAtTime(0.08, toneStartsAt + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, toneStartsAt + 0.24);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(toneStartsAt);
-    oscillator.stop(toneStartsAt + 0.25);
-    oscillator.addEventListener(
-      "ended",
-      () => {
-        oscillator.disconnect();
-        gain.disconnect();
-      },
-      { once: true },
-    );
-  });
+function alertGain(volume: number): number {
+  return ALERT_MAX_GAIN * volume * volume;
+}
+
+async function decodeAlertSound(
+  context: AudioContext,
+  sound: AlertSound,
+): Promise<AudioBuffer> {
+  const response = await fetch(ALERT_SOUND_URLS[sound]);
+  if (!response.ok) throw new Error(`Alert sound ${sound} failed to load.`);
+  return context.decodeAudioData(await response.arrayBuffer());
+}
+
+function playAlertBuffer(
+  context: AudioContext,
+  buffer: AudioBuffer,
+  volume: number,
+) {
+  if (volume <= 0) return;
+
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  const limiter = context.createDynamicsCompressor();
+
+  source.buffer = buffer;
+  gain.gain.value = alertGain(volume);
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.1;
+  source.connect(gain);
+  gain.connect(limiter);
+  limiter.connect(context.destination);
+  source.addEventListener(
+    "ended",
+    () => {
+      source.disconnect();
+      gain.disconnect();
+      limiter.disconnect();
+    },
+    { once: true },
+  );
+  source.start();
 }
 
 function freshSessionId(): string {
@@ -203,7 +248,10 @@ function closeRunningTimer(
     return { timer, credit: null };
   }
 
-  const availableMs = Math.max(0, timer.plannedDurationMs - timer.accumulatedMs);
+  const availableMs = Math.max(
+    0,
+    timer.plannedDurationMs - timer.accumulatedMs,
+  );
   const elapsedMs = Math.min(
     availableMs,
     Math.max(0, Math.round(at - timer.activeStartedAt)),
@@ -213,11 +261,7 @@ function closeRunningTimer(
     timer.accumulatedMs + elapsedMs,
   );
 
-  if (
-    timer.phase !== "focus" ||
-    !timer.selectedTaskId ||
-    elapsedMs === 0
-  ) {
+  if (timer.phase !== "focus" || !timer.selectedTaskId || elapsedMs === 0) {
     return {
       timer: { ...timer, accumulatedMs, activeStartedAt: null },
       credit: null,
@@ -252,10 +296,7 @@ function timerRemainingMs(timer: PomodoroTimerState, now: number): number {
       ? Math.max(0, now - timer.activeStartedAt)
       : 0;
 
-  return Math.max(
-    0,
-    timer.plannedDurationMs - timer.accumulatedMs - runningMs,
-  );
+  return Math.max(0, timer.plannedDurationMs - timer.accumulatedMs - runningMs);
 }
 
 function focusRecord(
@@ -296,19 +337,25 @@ function nextPhaseForFocus(
 export function usePomodoro(
   tasks: Task[],
   onAddFocusTime: (taskId: string, durationMs: number) => void,
+  initial?: { settings: PomodoroSettings; history: PomodoroSessionRecord[] },
 ): PomodoroController {
   const [settings, setSettings] = useState(() =>
-    normalizeSettings(loadPomodoroSettings()),
+    normalizeSettings(initial?.settings ?? loadPomodoroSettings()),
   );
   const [timer, setTimer] = useState(() => loadPomodoroTimer(settings));
-  const [history, setHistory] = useState(loadPomodoroHistory);
+  const [history, setHistory] = useState(
+    () => initial?.history ?? loadPomodoroHistory(),
+  );
   const [now, setNow] = useState(() => Date.now());
+  const [alertVolume, setAlertVolumeState] = useState(loadAlertVolume);
 
   const settingsRef = useRef(settings);
   const timerRef = useRef(timer);
   const tasksRef = useRef(tasks);
   const onAddFocusTimeRef = useRef(onAddFocusTime);
   const alertAudioRef = useRef<AudioContext | null>(null);
+  const alertBuffersRef = useRef(new Map<AlertSound, Promise<AudioBuffer>>());
+  const alertVolumeRef = useRef(alertVolume);
   const processedSessionsRef = useRef(
     new Set(history.map((record) => record.id)),
   );
@@ -330,16 +377,13 @@ export function usePomodoro(
   }, [onAddFocusTime]);
 
   useEffect(() => {
-    savePomodoroSettings(settings);
-  }, [settings]);
-
-  useEffect(() => {
     savePomodoroTimer(timer);
   }, [timer]);
 
   useEffect(() => {
-    savePomodoroHistory(history);
-  }, [history]);
+    alertVolumeRef.current = alertVolume;
+    saveAlertVolume(alertVolume);
+  }, [alertVolume]);
 
   const applyTimer = useCallback(
     (nextTimer: PomodoroTimerState, credit: FocusCredit | null = null) => {
@@ -367,40 +411,93 @@ export function usePomodoro(
     [],
   );
 
-  const prepareAlertAudio = useCallback(() => {
-    if (!settingsRef.current.notifications) return;
+  const alertAudioContext = useCallback((): AudioContext | null => {
+    const existing = alertAudioRef.current;
+    if (existing && existing.state !== "closed") return existing;
 
     const AudioContextClass = audioContextConstructor();
-    if (!AudioContextClass) return;
+    if (!AudioContextClass) return null;
 
     try {
-      const context = alertAudioRef.current ?? new AudioContextClass();
+      const context = new AudioContextClass();
       alertAudioRef.current = context;
-      if (context.state === "suspended") void context.resume().catch(() => {});
+      alertBuffersRef.current.clear();
+      return context;
     } catch {
       // In-app and desktop alerts still work without audio support.
+      return null;
     }
   }, []);
 
-  const playAlertSound = useCallback(() => {
-    const context = alertAudioRef.current;
-    if (!context || context.state === "closed") return;
+  const alertBuffer = useCallback(
+    (context: AudioContext, sound: AlertSound): Promise<AudioBuffer> => {
+      const buffers = alertBuffersRef.current;
+      const pending = buffers.get(sound);
+      if (pending) return pending;
 
-    const play = () => {
-      try {
-        playCompletionChime(context);
-      } catch {
-        // The visual notification remains available if audio playback fails.
+      const loading = decodeAlertSound(context, sound).catch((error) => {
+        // Let the next alert try again rather than pinning the failure.
+        buffers.delete(sound);
+        throw error;
+      });
+      buffers.set(sound, loading);
+      return loading;
+    },
+    [],
+  );
+
+  /**
+   * Creating the context inside the Start click is what lets the browser
+   * unmute it: an AudioContext made without a user gesture stays suspended.
+   * Asking for the notification permission here for the same reason, since
+   * the prompt is only shown from a gesture and desktop alerts default to on,
+   * so without this the setting would silently do nothing until the user
+   * found the toggle.
+   */
+  const prepareAlerts = useCallback(() => {
+    const currentSettings = settingsRef.current;
+    if (!currentSettings.notifications) return;
+
+    const context = alertAudioContext();
+    if (context) {
+      if (context.state === "suspended") void context.resume().catch(() => {});
+      for (const sound of ["focus", "break"] as const) {
+        void alertBuffer(context, sound).catch(() => {});
       }
-    };
-
-    if (context.state === "running") {
-      play();
-      return;
     }
 
-    void context.resume().then(play).catch(() => {});
-  }, []);
+    if (
+      currentSettings.desktopAlerts &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
+      try {
+        void Notification.requestPermission().catch(() => {});
+      } catch {
+        // Older browsers only take a callback; the settings toggle still asks.
+      }
+    }
+  }, [alertAudioContext, alertBuffer]);
+
+  const playAlertSound = useCallback(
+    (sound: AlertSound) => {
+      // A page reloaded mid-round has no context yet; a later click anywhere
+      // on the page is enough for the browser to let this one resume.
+      const context = alertAudioContext();
+      if (!context) return;
+
+      const resumed =
+        context.state === "running" ? Promise.resolve() : context.resume();
+      void Promise.all([resumed, alertBuffer(context, sound)])
+        .then(([, buffer]) =>
+          playAlertBuffer(context, buffer, alertVolumeRef.current),
+        )
+        .catch(() => {
+          // The visual notification remains available if playback fails.
+        });
+    },
+    [alertAudioContext, alertBuffer],
+  );
 
   useEffect(
     () => () => {
@@ -410,29 +507,32 @@ export function usePomodoro(
     [],
   );
 
-  const notify = useCallback((title: string, description: string) => {
-    const currentSettings = settingsRef.current;
-    if (!currentSettings.notifications) return;
+  const notify = useCallback(
+    (sound: AlertSound, title: string, description: string) => {
+      const currentSettings = settingsRef.current;
+      if (!currentSettings.notifications) return;
 
-    toast.info(title, { description, duration: 7_000 });
-    playAlertSound();
+      toast.info(title, { description, duration: 7_000 });
+      playAlertSound(sound);
 
-    if (
-      currentSettings.desktopAlerts &&
-      typeof Notification !== "undefined" &&
-      Notification.permission === "granted"
-    ) {
-      try {
-        new Notification(title, {
-          body: description,
-          tag: DESKTOP_NOTIFICATION_TAG,
-          requireInteraction: true,
-        });
-      } catch {
-        // The in-app notification remains available when the OS blocks one.
+      if (
+        currentSettings.desktopAlerts &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          new Notification(title, {
+            body: description,
+            tag: DESKTOP_NOTIFICATION_TAG,
+            requireInteraction: true,
+          });
+        } catch {
+          // The in-app notification remains available when the OS blocks one.
+        }
       }
-    }
-  }, [playAlertSound]);
+    },
+    [playAlertSound],
+  );
 
   const announceTransition = useCallback(
     (transition: PhaseTransition) => {
@@ -440,6 +540,7 @@ export function usePomodoro(
         const breakName =
           transition.nextPhase === "longBreak" ? "Long break" : "Short break";
         notify(
+          "focus",
           "Focus complete",
           `${breakName} ${transition.shouldAutoStart ? "started" : "is ready"}.`,
         );
@@ -447,6 +548,7 @@ export function usePomodoro(
       }
 
       notify(
+        "break",
         "Break complete",
         transition.selectedTaskTitle
           ? `Focus ${transition.shouldAutoStart ? "started" : "is ready"} for “${transition.selectedTaskTitle}”.`
@@ -470,10 +572,7 @@ export function usePomodoro(
       const closed = closeRunningTimer(current, closeAt, tasksRef.current);
       const finished = closed.timer;
       const currentSettings = settingsRef.current;
-      const selected = activeTask(
-        tasksRef.current,
-        finished.selectedTaskId,
-      );
+      const selected = activeTask(tasksRef.current, finished.selectedTaskId);
       const completedFocusCount =
         finished.phase === "focus" && completed
           ? finished.completedFocusCount + 1
@@ -535,12 +634,7 @@ export function usePomodoro(
         const boundary =
           current.activeStartedAt +
           Math.max(0, current.plannedDurationMs - current.accumulatedMs);
-        const transition = advancePhase(
-          boundary,
-          boundary,
-          true,
-          false,
-        );
+        const transition = advancePhase(boundary, boundary, true, false);
         if (!transition) break;
 
         lastTransition = transition;
@@ -558,10 +652,7 @@ export function usePomodoro(
   const finishIfExpired = useCallback(
     (at: number): boolean => {
       const current = timerRef.current;
-      if (
-        current.status !== "running" ||
-        timerRemainingMs(current, at) > 0
-      ) {
+      if (current.status !== "running" || timerRemainingMs(current, at) > 0) {
         return false;
       }
 
@@ -629,17 +720,14 @@ export function usePomodoro(
     };
   }, [finishExpiredTimer, timer.sessionId, timer.status]);
 
-  const updateSettings = useCallback(
-    (patch: Partial<PomodoroSettings>) => {
-      const nextSettings = normalizeSettings({
-        ...settingsRef.current,
-        ...patch,
-      });
-      settingsRef.current = nextSettings;
-      setSettings(nextSettings);
-    },
-    [],
-  );
+  const updateSettings = useCallback((patch: Partial<PomodoroSettings>) => {
+    const nextSettings = normalizeSettings({
+      ...settingsRef.current,
+      ...patch,
+    });
+    settingsRef.current = nextSettings;
+    setSettings(nextSettings);
+  }, []);
 
   const selectTask = useCallback(
     (taskId: string) => {
@@ -672,7 +760,7 @@ export function usePomodoro(
   );
 
   const start = useCallback(() => {
-    prepareAlertAudio();
+    prepareAlerts();
 
     const current = timerRef.current;
     if (current.status === "running") return;
@@ -696,7 +784,7 @@ export function usePomodoro(
       activeStartedAt: startedAt,
     });
     setNow(startedAt);
-  }, [advancePhase, applyTimer, prepareAlertAudio]);
+  }, [advancePhase, applyTimer, prepareAlerts]);
 
   const pause = useCallback(() => {
     const pausedAt = Date.now();
@@ -719,10 +807,7 @@ export function usePomodoro(
     processedSessionsRef.current.add(current.sessionId);
 
     const closed = closeRunningTimer(current, restartedAt, tasksRef.current);
-    const selected = activeTask(
-      tasksRef.current,
-      closed.timer.selectedTaskId,
-    );
+    const selected = activeTask(tasksRef.current, closed.timer.selectedTaskId);
     const nextTimer: PomodoroTimerState = {
       phase: closed.timer.phase,
       status: "idle",
@@ -788,10 +873,7 @@ export function usePomodoro(
    * round the new ones would recognise.
    */
   const restoreState = useCallback(
-    (
-      nextSettings: PomodoroSettings,
-      nextHistory: PomodoroSessionRecord[],
-    ) => {
+    (nextSettings: PomodoroSettings, nextHistory: PomodoroSessionRecord[]) => {
       const normalized = normalizeSettings(nextSettings);
       settingsRef.current = normalized;
       setSettings(normalized);
@@ -814,6 +896,23 @@ export function usePomodoro(
     } catch {
       return Notification.permission;
     }
+  }, []);
+
+  const previewAlertSound = useCallback(
+    (sound: AlertSound) => {
+      const context = alertAudioContext();
+      if (context?.state === "suspended") void context.resume().catch(() => {});
+      playAlertSound(sound);
+    },
+    [alertAudioContext, playAlertSound],
+  );
+
+  const setAlertVolume = useCallback((volume: number) => {
+    const next = toAlertVolume(volume);
+    // The ref is set here as well so a preview fired from the same gesture as
+    // the change plays at the new level, not the one from the last render.
+    alertVolumeRef.current = next;
+    setAlertVolumeState(next);
   }, []);
 
   const selectedTask = useMemo(
@@ -839,5 +938,8 @@ export function usePomodoro(
     clearHistory,
     restoreState,
     requestNotificationPermission,
+    previewAlertSound,
+    alertVolume,
+    setAlertVolume,
   };
 }

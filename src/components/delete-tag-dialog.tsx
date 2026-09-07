@@ -27,7 +27,7 @@ function DeleteTagDialog({ tag, taskCount, onDelete }: DeleteTagDialogProps) {
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label={`Delete ${tag.name}`}
           title="Delete tag"

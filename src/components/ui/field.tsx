@@ -7,7 +7,7 @@ function FieldGroup({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="field-group"
-      className={cn("flex min-w-0 flex-col gap-5", className)}
+      className={cn("flex min-w-0 flex-col gap-4", className)}
       {...props}
     />
   );
@@ -18,7 +18,7 @@ function Field({ className, ...props }: ComponentProps<"div">) {
     <div
       role="group"
       data-slot="field"
-      className={cn("flex min-w-0 flex-col gap-2", className)}
+      className={cn("flex min-w-0 flex-col gap-1.5", className)}
       {...props}
     />
   );
@@ -42,7 +42,7 @@ function FieldLegend({ className, ...props }: ComponentProps<"legend">) {
   return (
     <legend
       data-slot="field-legend"
-      className={cn("mb-3 text-sm font-medium", className)}
+      className={cn("mb-2 text-sm font-medium", className)}
       {...props}
     />
   );

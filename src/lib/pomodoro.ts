@@ -59,6 +59,14 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
 export const POMODORO_SETTINGS_STORAGE_KEY = "marzano.pomodoro.settings.v1";
 export const POMODORO_TIMER_STORAGE_KEY = "marzano.pomodoro.timer.v1";
 export const POMODORO_HISTORY_STORAGE_KEY = "marzano.pomodoro.history.v1";
+/**
+ * The alert volume stays in this browser like the timer does, not in the data
+ * file: how loud a laptop speaker needs to be has nothing to do with the
+ * desktop's, and a synced number would only fight itself between the two.
+ */
+export const POMODORO_ALERT_VOLUME_STORAGE_KEY =
+  "marzano.pomodoro.alert-volume.v1";
+export const DEFAULT_ALERT_VOLUME = 0.8;
 
 /** Keeps local storage bounded while retaining enough recent data for trends. */
 export const POMODORO_HISTORY_LIMIT = 500;
@@ -233,6 +241,21 @@ function writeStoredValue(key: string, value: unknown): void {
   }
 }
 
+/** A volume is a fraction of full level, 0 to 1. */
+export function toAlertVolume(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, value))
+    : DEFAULT_ALERT_VOLUME;
+}
+
+export function loadAlertVolume(): number {
+  return toAlertVolume(readStoredValue(POMODORO_ALERT_VOLUME_STORAGE_KEY));
+}
+
+export function saveAlertVolume(volume: number): void {
+  writeStoredValue(POMODORO_ALERT_VOLUME_STORAGE_KEY, toAlertVolume(volume));
+}
+
 export function loadPomodoroSettings(): PomodoroSettings {
   return toSettings(readStoredValue(POMODORO_SETTINGS_STORAGE_KEY));
 }
@@ -337,7 +360,10 @@ function toSessionRecord(value: unknown): PomodoroSessionRecord | null {
     (sum, allocation) => sum + allocation.durationMs,
     0,
   );
-  if (!Number.isSafeInteger(allocationTotal) || allocationTotal > value.durationMs) {
+  if (
+    !Number.isSafeInteger(allocationTotal) ||
+    allocationTotal > value.durationMs
+  ) {
     return null;
   }
 

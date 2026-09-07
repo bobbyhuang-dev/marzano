@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  DatabaseBackup,
+  FolderOpen,
   ExternalLink,
   ListTodo,
   ShieldCheck,
@@ -18,8 +18,10 @@ import { REPOSITORY_URL } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TRANSITION } from "@/lib/motion";
@@ -50,7 +52,7 @@ const GUIDE_STEPS: GuideStep[] = [
       "A focused task list with due reminders, tags and a Pomodoro timer — and nothing else.",
     points: [
       "Five views sit in the sidebar: Tasks, Calendar, Pomodoro, Tags and Completed.",
-      "There is no account to make and nothing to set up. Type a task and it is saved.",
+      "There is no account to make. Choose a data folder to save your tasks on your laptop.",
       "This takes a minute to read, and it stays in the sidebar under Guide.",
     ],
   },
@@ -59,10 +61,10 @@ const GUIDE_STEPS: GuideStep[] = [
     icon: ShieldCheck,
     title: "Private by design",
     summary:
-      "Your tasks stay in this browser. Marzano has nowhere else to put them.",
+      "Your tasks stay on your device, in a folder you choose.",
     points: [
-      "Everything is kept in this browser's own storage — no account, no server, no profile.",
-      "The app makes no network calls, so nothing is uploaded, tracked or sold, and it works offline.",
+      "Local data connects a folder in Chrome or Edge. Changes save there while Marzano is open.",
+      "Your tasks are never uploaded. Browser storage keeps a recovery copy of pending changes.",
       "It is open source under the MIT licence, so none of that has to be taken on trust.",
     ],
     link: { label: "Read the source on GitHub", href: REPOSITORY_URL },
@@ -115,13 +117,13 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: "keep",
-    icon: DatabaseBackup,
-    title: "Keep a copy, then make it yours",
+    icon: FolderOpen,
+    title: "Keep your tasks in a folder",
     summary:
-      "Data in one browser is data in one place: Backup is how it travels and how it survives.",
+      "Local data saves your tasks to a folder on this computer, where clearing browser data can’t reach them.",
     points: [
-      "Backup writes a single JSON file holding your tasks, tags and Pomodoro history.",
-      "Importing merges by default — each record kept from whichever copy was edited last.",
+      "Choose a folder once; every change is saved there while Marzano is open.",
+      "Choose the same folder again on a fresh browser to pick up where you left off.",
       "Settings carries the theme, seven accent colours and the display size.",
     ],
   },
@@ -131,16 +133,16 @@ function StepCard({ step }: { step: GuideStep }) {
   const Icon = step.icon;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3.5">
       {/* The welcome card is the mark itself; the rest keep a tile in its
           colour rather than the muted medallion the empty states use, because
           this is still the app introducing itself, not a status. */}
       {Icon ? (
-        <span className="flex size-11 items-center justify-center rounded-[0.625rem] bg-primary text-primary-foreground">
+        <span className="flex size-10 items-center justify-center rounded-[0.625rem] bg-primary text-primary-foreground">
           <Icon className="size-5" aria-hidden="true" />
         </span>
       ) : (
-        <BrandMark className="size-10 text-primary" />
+        <BrandMark className="size-9 text-primary" />
       )}
       <div className="grid gap-1.5">
         <h3 className="text-base font-semibold tracking-[-0.01em] text-foreground">
@@ -238,7 +240,6 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden p-0"
         onOpenAutoFocus={(event) => {
           // Left alone, focus lands on Skip -- the first control in the DOM --
           // and an opening Enter would end the tour before it starts.
@@ -253,13 +254,10 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
           What Marzano is, and how to use it.
         </DialogDescription>
 
-        <div
-          ref={scrollerRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        >
+        <DialogBody ref={scrollerRef} className="pt-5">
           {/* A floor under the shortest card, so the footer holds still while
               the steps change under it. */}
-          <div className="min-h-[19rem] p-5 min-[420px]:p-6">
+          <div className="min-h-[17rem]">
             <AnimatePresence initial={false} mode="wait" custom={direction}>
               <motion.div
                 key={step.id}
@@ -273,12 +271,12 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
               </motion.div>
             </AnimatePresence>
           </div>
-        </div>
+        </DialogBody>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-t border-border p-5 min-[420px]:p-6">
+        <DialogFooter>
           {/* Position, not a control: the two buttons are the way through, and
               seven more tab stops would bury them. */}
-          <div className="flex items-center gap-1.5" aria-hidden="true">
+          <div className="mr-auto flex items-center gap-1.5" aria-hidden="true">
             {GUIDE_STEPS.map((entry, entryIndex) => (
               <span
                 key={entry.id}
@@ -291,7 +289,7 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
               />
             ))}
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {first ? (
               <Button variant="ghost" onClick={() => handleOpenChange(false)}>
                 Skip
@@ -310,7 +308,7 @@ function GuideDialog({ open, onOpenChange }: GuideDialogProps) {
               {last ? null : <ArrowRight aria-hidden="true" />}
             </Button>
           </div>
-        </div>
+        </DialogFooter>
 
         <p className="sr-only" aria-live="polite" aria-atomic="true">
           Step {index + 1} of {GUIDE_STEPS.length}: {step.title}

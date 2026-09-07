@@ -60,16 +60,16 @@ function TaskDueDate({ task }: { task: Task }) {
   return (
     <p
       className={cn(
-        "flex items-center gap-1.5 text-sm",
+        "flex items-center gap-1 text-xs",
         urgency ? URGENCY_CLASS[urgency] : URGENCY_CLASS.later,
       )}
     >
       {urgency === "overdue" ? (
-        <BellRing aria-hidden="true" className="size-4 shrink-0" />
+        <BellRing aria-hidden="true" className="size-3.5 shrink-0" />
       ) : task.dueAt ? (
-        <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
+        <CalendarClock aria-hidden="true" className="size-3.5 shrink-0" />
       ) : (
-        <CalendarOff aria-hidden="true" className="size-4 shrink-0" />
+        <CalendarOff aria-hidden="true" className="size-3.5 shrink-0" />
       )}
       <DueDateText dueAt={task.dueAt} />
     </p>

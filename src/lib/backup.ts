@@ -37,44 +37,6 @@ export const BACKUP_VERSION = 2;
 /** Merging keeps both sides; replacing throws the current data away. */
 export type ImportMode = "merge" | "replace";
 
-export function createBackup(contents: BackupContents): Backup {
-  return {
-    format: BACKUP_FORMAT,
-    version: BACKUP_VERSION,
-    exportedAt: new Date().toISOString(),
-    ...contents,
-  };
-}
-
-export function serializeBackup(backup: Backup): string {
-  // Indented: a backup people can open and read is a backup they trust.
-  return JSON.stringify(backup, null, 2);
-}
-
-export function backupFileName(date = new Date()): string {
-  const pad = (part: number) => String(part).padStart(2, "0");
-  const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}`;
-
-  return `marzano-backup-${stamp}.json`;
-}
-
-export function downloadBackup(backup: Backup) {
-  const blob = new Blob([serializeBackup(backup)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = backupFileName();
-  link.click();
-  // Revoked on the next frame: Safari has not finished reading the blob when
-  // `click()` returns.
-  requestAnimationFrame(() => URL.revokeObjectURL(url));
-}
-
 /** Thrown for a file that is not a backup, so the dialog can say which. */
 export class BackupParseError extends Error {}
 

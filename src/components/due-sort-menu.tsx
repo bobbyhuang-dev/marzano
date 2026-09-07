@@ -93,9 +93,9 @@ function DueSortMenu({ value, onValueChange }: DueSortMenuProps) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-haspopup="true"
-        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-normal text-muted-foreground shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
+        className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-input bg-background px-3 text-[0.8125rem] font-normal text-muted-foreground shadow-sm pointer-coarse:h-9 transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
-        <ActiveIcon aria-hidden="true" className="size-4 shrink-0" />
+        <ActiveIcon aria-hidden="true" className="size-3.5 shrink-0" />
         <span className="truncate">{active.label}</span>
         <ChevronDown
           aria-hidden="true"

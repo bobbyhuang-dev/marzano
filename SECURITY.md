@@ -2,7 +2,7 @@
 
 Marzano is a single-page app that runs entirely in the browser. It has no
 server, no accounts, and makes no network calls once loaded; everything the
-user writes stays in that browser's `localStorage`. That keeps the attack
+user writes stays on the device, in a selected data folder and an IndexedDB recovery cache. That keeps the attack
 surface small, but not empty, and reports are welcome.
 
 ## Reporting a vulnerability
@@ -45,7 +45,7 @@ if it reproduces on the current build.
 - Issues that need a compromised browser, device, or extension. Anyone who can
   read the browser's storage already has the data.
 - Data loss from clearing site data or from a browser's own storage eviction.
-  The app documents this, and Backup exists for it.
+  Browser-only pending changes can be lost; successfully saved folder files survive this cleanup.
 - Dependency advisories with no reachable path in the built app. Mention them
   in an ordinary issue instead.
 - Findings from automated scanners that come without a reproduction.

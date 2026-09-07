@@ -39,9 +39,9 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 
 **Completed archive** — Checked-off tasks stay under Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to the cutoff are called out.
 
-**Backup** — Export your tasks, tags and Pomodoro history as one readable JSON file, and import it in another browser. Importing merges by default, keeping whichever copy of each record was edited last, so two browsers can be brought together without losing either side. Replace is there for a clean restore.
+**Local data** — Choose a folder in desktop Chrome or Edge. Tasks, tags and Pomodoro settings/history autosave to `marzano.json` while the app is open, with a visible save status and up to 24 hourly recovery copies in `marzano-recovery/`. Existing browser data carries over when choosing a new folder. Opening an existing folder previews its data before use or merge; old version 1 and 2 backup files can be opened through Local data too.
 
-Descriptions and subtasks travel with their parent task and merge as one record; simultaneous edits to different subtasks are not combined. New exports use backup version 2, while version 1 files remain importable. Older app versions reject version 2 backups instead of dropping the added details.
+Descriptions and subtasks travel with their parent task and merge as one record; simultaneous edits to different subtasks are not combined. A merge keeps the current manual order and timer settings. Other browsers support opening a data file and saving a copy, but cannot autosave to an ordinary folder.
 
 **Appearance** — Light and dark themes that follow the system by default, seven accent colours, and a display size that scales the whole app rather than just the text. All three are applied before the first paint, so there is no flash on load.
 
@@ -70,19 +70,27 @@ pnpm lint      # eslint .
 pnpm icons     # re-render the favicon set in public/ from src/lib/brand.ts
 ```
 
-There is no test suite; `pnpm build` type-checks the whole project and is the verification gate. The output in `dist/client/` is a static site that any host can serve, with every path falling back to `index.html`.
+`pnpm test:storage` runs focused persistence regression tests using Node 24. `pnpm build` type-checks the whole project; lint and build remain deployment gates. The output in `dist/client/` is a static site that any host can serve, with every path falling back to `index.html`.
 
 ## Deployment
 
 Production is [marzano.bobbyhuang.dev](https://marzano.bobbyhuang.dev), served as static assets from Cloudflare Workers. Every push to `main` runs the [deploy workflow](.github/workflows/deploy.yml), which lints, builds, and publishes; a merged change is live within minutes. The workflow needs the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and it checks out the full history because the changelog is built from the git log.
 
-Deployments never touch user data, which lives in each browser. When moving between hostnames, export a backup from the old site and import it into the new one before retiring the old hostname.
+Deployments never touch user data. When moving between hostnames, wait for “Saved to folder” on the old site, then choose the same folder on the new site. Folder permissions are specific to the browser and site.
 
 ## Your data
 
-Everything lives in your browser's `localStorage` under keys prefixed `marzano.`: tasks, tags, the sort and calendar range, the theme, accent and display size, the sidebar width, the guide and update flags, and the Pomodoro settings, timer, and session history. Nothing is uploaded anywhere.
+Tasks, tags, and Pomodoro settings/history live in the folder you select. `marzano.json` is a versioned, readable JSON file. Writes are serialized, checked against the last file read, committed by closing a writable stream, and read back before reporting success. An external file change pauses saving for review; a missing or invalid live file is never silently overwritten. Use one browser at a time for the same folder; this is local storage, not cross-device sync. A second editing tab in the same browser is blocked to protect pending changes.
 
-The flip side is that data is per browser and per device. Clearing site data erases it, and there is no sync between browsers; Backup is how data travels. Desktop alerts need notification permission, which the Pomodoro settings will ask for.
+**Saved files survive clearing cookies and site data.** Browser cleanup can remove the remembered folder permission and recovery cache. Choose the same folder again, review its contents, and select **Use this file**. Wait for **Saved to folder** before cleanup: edits that have only reached browser storage are not protected. Choose a folder outside iCloud/Dropbox if you want the files to remain exclusively on your laptop.
+
+IndexedDB holds the remembered directory handle and a recovery copy of pending changes. An atomic localStorage recovery snapshot also preserves edits when IndexedDB is unavailable; the newer valid snapshot is used on reload. Without a connected folder, data is only in this browser and remains vulnerable to site-data cleanup. A failed save or lost permission is displayed; changes stay pending for retry. **Open a file** reads recovery snapshots and old backups; **Save a copy** downloads the current data.
+
+Theme, accent, display size, sort, calendar scope, sidebar, guide/update flags and the running Pomodoro timer remain browser preferences in `localStorage`. Clearing browser data resets them. The app reads legacy task/tag/history storage when no recovery snapshot exists and retains those original keys without overwriting or deleting them. No task data is uploaded by Marzano. Folder access requires HTTPS or localhost, a supported browser, and permission granted through a user-initiated picker.
+
+Existing users see a one-time **Save your tasks to a folder** notice. **Not now** keeps the app usable; the **In this browser only** status above each page stays until folder setup succeeds. Unsupported browsers are offered **Save a copy** to carry the data to Chrome or Edge. A transfer is marked complete only after a verified folder save or review of an existing matching file. A failed or canceled setup does not mark it complete.
+
+If an older app tab remains open across deployment and changes the legacy data, the new app pauses folder writes and offers **Review changes**. Close the older tab, review the data, and merge or explicitly replace it; both copies remain available until that decision. The deployment workflow runs the storage/upgrade regression tests before publishing.
 
 ## Built with
 
@@ -103,7 +111,7 @@ scripts/
   render-icons.mjs renders public/ from the brand mark
 ```
 
-[`CLAUDE.md`](CLAUDE.md) documents the architecture in depth: the persistence contract, the due-date encoding, the sync bookkeeping behind Backup, and how the Pomodoro state machine works.
+[`CLAUDE.md`](CLAUDE.md) documents the architecture in depth: the persistence contract, the due-date encoding, the sync bookkeeping behind Local data, and how the Pomodoro state machine works.
 
 ## Contributing
 
@@ -112,3 +120,5 @@ Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers 
 ## License
 
 [MIT](LICENSE) © 2026 Bobby Huang
+
+The Pomodoro alert sounds are Google's [Material Design product sounds](https://material.io/design/sound/sound-resources.html), used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see [src/assets/sounds/LICENSE.md](src/assets/sounds/LICENSE.md).

@@ -13,6 +13,7 @@
     "deploy": "pnpm build && wrangler deploy",
     "icons": "node scripts/render-icons.mjs",
     "lint": "eslint .",
+    "test:storage": "node --test scripts/test-local-data.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

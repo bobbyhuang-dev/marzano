@@ -164,10 +164,10 @@ function SegmentedControl<T extends string>({
             onClick={() => onValueChange(option.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "relative flex min-h-10 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-ui outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70",
+              "relative flex min-h-8 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-ui pointer-coarse:min-h-9 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70",
               // The narrowest phone has to fit three of these, so a stretched row
               // keeps the padding the grid it replaced used.
-              stretch && "min-h-11 flex-1 px-2",
+              stretch && "flex-1 px-2",
               iconOnly && "px-0",
               checked
                 ? variant === "solid"

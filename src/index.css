@@ -229,7 +229,7 @@
     --input: 0 0% 82%;
     --ring: 0 0% 20%;
     --overlay: 0 0% 9% / 0.25;
-    --radius: 0.875rem;
+    --radius: 0.625rem;
 
     /* On white, depth is a soft drop shadow plus a hairline of black. */
     --elevation-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 30px rgb(0 0 0 / 0.05),
@@ -418,6 +418,19 @@
   html {
     color-scheme: light;
     background: hsl(var(--background));
+    /*
+     * Everything is sized in rem, so this one line is what keeps a wide
+     * screen from showing a small page in a sea of margin: the root grows
+     * with the viewport from 16px at 1280px wide to 24px near 3000px, and
+     * the layout -- type, controls, the sidebar, the content column -- grows
+     * with it. `rem` on the root is the browser's own default, so a reader's
+     * font-size preference still counts, and `--display-scale` is the step
+     * chosen in Settings (lib/appearance.ts and the pre-paint script in
+     * index.html both set it), multiplied on top rather than replacing it.
+     */
+    font-size: calc(
+      var(--display-scale, 1) * clamp(1rem, 0.625rem + 0.46875vw, 1.5rem)
+    );
   }
 
   html.dark {

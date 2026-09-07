@@ -1,13 +1,12 @@
 import { useId } from "react";
 import { format, parseISO } from "date-fns";
 
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
-  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -16,7 +15,7 @@ import { type Release, RELEASES } from "@/lib/releases";
 
 function ReleaseEntry({ release, fresh }: { release: Release; fresh: boolean }) {
   return (
-    <article className="grid gap-3 border-border [&+&]:border-t [&+&]:pt-6">
+    <article className="grid gap-3">
       <div className="grid gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <time
@@ -81,16 +80,16 @@ function WhatsNewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(36rem,calc(100dvh-2rem))] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 p-5 pb-4 min-[420px]:p-6 min-[420px]:pb-4">
+      <DialogContent
+        className="max-h-[min(36rem,calc(100dvh-2rem))] max-w-2xl"
+        aria-describedby={undefined}
+      >
+        <DialogHeader>
           <DialogTitle>What's new</DialogTitle>
-          <DialogDescription>
-            What has changed in Marzano, newest first.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-y border-border">
-          <div className="grid gap-6 p-5 min-[420px]:p-6">
+        <DialogBody>
+          <div className="grid gap-7">
             {RELEASES.map((release) => (
               <ReleaseEntry
                 key={release.id}
@@ -99,25 +98,20 @@ function WhatsNewDialog({
               />
             ))}
           </div>
-        </div>
+        </DialogBody>
 
         {/* The opt-out sits with the notice it silences, and again in Settings
             for the reader who ticked it in a hurry. */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-3 p-5 min-[420px]:p-6">
-          <div className="-ml-3 flex items-center">
-            <Checkbox
-              id={muteId}
-              checked={muted}
-              onCheckedChange={onMutedChange}
-            />
-            <Label htmlFor={muteId} className="cursor-pointer text-muted-foreground">
-              Don't announce updates
-            </Label>
-          </div>
-          <DialogClose asChild>
-            <Button variant="outline">Close</Button>
-          </DialogClose>
-        </div>
+        <DialogFooter className="-ml-3 justify-start gap-0 pt-1">
+          <Checkbox
+            id={muteId}
+            checked={muted}
+            onCheckedChange={onMutedChange}
+          />
+          <Label htmlFor={muteId} className="cursor-pointer text-muted-foreground">
+            Don't announce updates
+          </Label>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

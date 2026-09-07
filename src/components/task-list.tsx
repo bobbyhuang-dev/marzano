@@ -27,6 +27,7 @@ import { useAnimating } from "@/hooks/use-animating";
 import { listRowMotion } from "@/lib/motion";
 import {
   canReorderTask,
+  hasTaskDetails,
   reorderBounds,
   type DueSort,
   type Task,
@@ -61,11 +62,11 @@ function ReorderHandle({ task, hintId, onPointerDown, onKeyDown }: ReorderHandle
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size="icon-sm"
       aria-label={`Move ${task.title}`}
       aria-describedby={hintId}
       title="Drag to reorder"
-      className="cursor-grab touch-none active:cursor-grabbing"
+      className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
@@ -106,30 +107,40 @@ function TaskItem({
   const dragControls = useDragControls();
   const animating = useAnimating();
 
+  // The meta line exists only when it has something to say. A task that is
+  // just a name is one line tall, so a page of quick captures reads as a
+  // list rather than as a column of rows each noting what they lack.
+  const rowTags = resolveTags(task.tagIds, tagsById);
+  const hasMeta =
+    task.dueAt !== null || rowTags.length > 0 || hasTaskDetails(task);
+
   const content = (
     <>
-      {/* The 2.75rem hit area is pulled left so the circle itself, not the
-          button around it, lines up with the heading above the list. */}
+      {/* The hit area is pulled left and up so the circle itself, not the
+          button around it, lines up with the heading and the title's first
+          line. The pull is half of what the button has over the circle. */}
       <Checkbox
-        className="-ml-3 -mt-2.5"
+        className="-ml-2 -mt-2 pointer-coarse:-ml-2.5 pointer-coarse:-mt-2.5"
         checked={false}
         onCheckedChange={onComplete}
         aria-label={`Mark ${task.title} as complete`}
         title="Complete task"
       />
       <div className="min-w-0 flex-1">
-        <p className="break-words text-sm font-medium leading-6 text-foreground">
+        <p className="break-words text-sm font-medium leading-5 text-foreground">
           {task.title}
         </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <TaskDueDate task={task} />
-          <TagChipList tags={resolveTags(task.tagIds, tagsById)} />
-          <TaskDetailsTrigger task={task} />
-        </div>
+        {hasMeta ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {task.dueAt ? <TaskDueDate task={task} /> : null}
+            <TagChipList tags={rowTags} />
+            <TaskDetailsTrigger task={task} />
+          </div>
+        ) : null}
       </div>
       {/* The checkbox tracks the title's first line, but the actions belong to
           the row as a whole, so they centre against its full height. */}
-      <div className="flex shrink-0 items-center gap-0.5 self-center">
+      <div className="flex shrink-0 items-center self-center">
         <TaskFormDialog
           task={task}
           tags={tags}
@@ -138,7 +149,8 @@ function TaskItem({
           trigger={
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
+              className="text-muted-foreground"
               aria-label={`Edit ${task.title}`}
               title="Edit task"
             >
@@ -164,11 +176,11 @@ function TaskItem({
   // left standing at height zero.
   const row = (
     <TaskDetails task={task}>
-      <div className="flex items-start gap-2 py-3.5 sm:gap-3 sm:py-4">{content}</div>
+      <div className="flex items-start gap-2 py-2.5 sm:py-3">{content}</div>
       {/* Indented past the checkbox and gap so it sits under the title. */}
       <TaskDetailsContent
         task={task}
-        className="pl-10 sm:pl-11"
+        className="pl-9"
         onSubtaskComplete={onSubtaskComplete}
       />
     </TaskDetails>
@@ -204,7 +216,7 @@ function TaskItem({
         "relative",
         animating.active && "overflow-clip",
         reorderable.dragging &&
-          "-mx-3 rounded-lg bg-background px-3 shadow-card",
+          "-mx-2 rounded-lg bg-background px-2 shadow-card",
       )}
     >
       {row}
@@ -330,7 +342,7 @@ function TaskList({
 
   // The first row's top padding would stack on the heading's margin and open
   // a gap twice the one above it, so the list absorbs one row's worth.
-  const listClassName = "-mt-3.5 divide-y divide-border sm:-mt-4";
+  const listClassName = "-mt-2.5 divide-y divide-border sm:-mt-3";
 
   if (!reorder) {
     return (

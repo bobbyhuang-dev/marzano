@@ -25,7 +25,9 @@ interface SubtaskFieldsProps {
 /**
  * One editable subtask -- name and done state --
  * shared by the task dialog and the quick-add form on the task page, so a
- * subtask is written the same way wherever the task is.
+ * subtask is written the same way wherever the task is. The row is not boxed:
+ * a checkbox, a field and a bin already read as one line, and a border around
+ * each would rule the list every few rem.
  */
 function SubtaskFields({
   subtask,
@@ -39,7 +41,7 @@ function SubtaskFields({
   const errorId = `${fieldId}-error`;
 
   return (
-    <FieldGroup className="gap-3 rounded-md border border-border p-3">
+    <FieldGroup className="gap-2">
       <div className="flex items-start gap-1">
         <Checkbox
           checked={subtask.completedAt !== null}
@@ -74,7 +76,8 @@ function SubtaskFields({
         </Field>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon-sm"
+          className="mt-0.5 text-muted-foreground"
           aria-label={`Delete subtask ${index + 1}`}
           title="Delete subtask"
           onClick={onDelete}

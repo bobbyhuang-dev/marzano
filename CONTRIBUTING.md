@@ -32,10 +32,11 @@ pnpm dev           # Vite dev server
 
 ## Checking your change
 
-There is no test suite. The build is the gate, and the deploy workflow runs the
-same two commands on every push to `main`:
+Run `pnpm test:storage` for persistence changes. The deploy workflow runs the
+following checks on every push to `main`:
 
 ```bash
+pnpm test:storage  # persistence and upgrade regression checks
 pnpm lint          # eslint .
 pnpm build         # tsc -b (type-check) then vite build -> dist/client/
 ```

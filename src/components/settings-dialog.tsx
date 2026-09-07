@@ -21,9 +21,8 @@ import { SettingToggle } from "@/components/setting-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
+  DialogBody,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -51,7 +50,7 @@ const THEME_OPTIONS: { id: ThemePreference; label: string; icon: LucideIcon }[] 
 ];
 
 /**
- * No icon column, unlike the backup dialog: these sections are made of
+ * No icon column, unlike the local data dialog: these sections are made of
  * full-width controls, and indenting them past an icon would leave the rows
  * hanging off the right edge of the window. A rule between sections does the
  * separating the icons would have done.
@@ -66,7 +65,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="grid gap-3 border-border [&+&]:border-t [&+&]:pt-6">
+    <section className="grid gap-3">
       <div className="grid gap-1">
         <h3 className="text-sm font-semibold leading-none text-foreground">
           {title}
@@ -300,16 +299,18 @@ function SettingsDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="flex max-h-[min(36rem,calc(100dvh-2rem))] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 p-5 pb-4 min-[420px]:p-6 min-[420px]:pb-4">
+      <DialogContent
+        className="max-h-[min(36rem,calc(100dvh-2rem))] max-w-2xl"
+        aria-describedby={undefined}
+      >
+        <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            How Marzano looks. Your tasks are not touched.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-y border-border">
-          <div className="grid gap-6 p-5 min-[420px]:p-6">
+        {/* Sections are set apart by space alone: each opens with its own
+            heading, which is all the boundary a reader needs. */}
+        <DialogBody className="pb-4">
+          <div className="grid gap-8">
             <Section
               title="Appearance"
               description="The theme and the colour it is drawn in."
@@ -369,8 +370,8 @@ function SettingsDialog({
               description="A task list with due reminders, tags, and a Pomodoro timer."
             >
               <p className="text-sm text-muted-foreground">
-                Marzano runs entirely in this browser: no account, no server, and
-                nothing leaves the machine. Keep a copy of your data with Backup.
+                Marzano runs entirely on your device: no account, no server.
+                Local data keeps your tasks in a folder of your choosing.
               </p>
               <Button variant="outline" className="justify-start" asChild>
                 <a href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener">
@@ -380,13 +381,7 @@ function SettingsDialog({
               </Button>
             </Section>
           </div>
-        </div>
-
-        <div className="flex shrink-0 justify-end p-5 min-[420px]:p-6">
-          <DialogClose asChild>
-            <Button variant="outline">Close</Button>
-          </DialogClose>
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

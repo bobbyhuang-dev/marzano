@@ -47,13 +47,13 @@ const FIELD_VARIANTS = {
     // Text fields soften the focus ring into a halo (a half-opacity border and a
     // wider, fainter glow) rather than the full-strength ring buttons use: on the
     // neutral accent a hard gray outline reads as a mistake, not a highlight.
-    "h-11 rounded-md border border-input bg-background shadow-sm transition-[border-color,box-shadow] duration-150 ease-out focus-visible:border-ring/50 focus-visible:ring-[4px] focus-visible:ring-ring/20",
-  seamless: `h-12 bg-transparent ${SEGMENT_FOCUS_RING}`,
+    "h-9 rounded-md border border-input bg-background shadow-sm pointer-coarse:h-10 transition-[border-color,box-shadow] duration-150 ease-out focus-visible:border-ring/50 focus-visible:ring-[4px] focus-visible:ring-ring/20",
+  seamless: `h-10 bg-transparent ${SEGMENT_FOCUS_RING}`,
 } as const;
 
 const CHEVRON_VARIANTS = {
-  outline: "h-11",
-  seamless: "h-12",
+  outline: "h-9 pointer-coarse:h-10",
+  seamless: "h-10",
 } as const;
 
 /**

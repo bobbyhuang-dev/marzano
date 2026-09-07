@@ -44,7 +44,8 @@ function CheckboxIndicator({
 
 /**
  * The circle is 1.25rem so it sits alongside a line of text, but the button
- * around it keeps the 2.75rem hit area every other control in the app has.
+ * around it keeps the hit area every other control in the app has: 2.25rem,
+ * and 2.5rem under a finger.
  */
 const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
   ({ className, checked, onCheckedChange, ...props }, ref) => (
@@ -55,13 +56,13 @@ const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
       aria-checked={checked}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "group inline-flex size-11 shrink-0 items-center justify-center rounded-full outline-none disabled:pointer-events-none disabled:opacity-50",
+        "group inline-flex size-9 shrink-0 items-center justify-center rounded-full outline-none pointer-coarse:size-10 disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       {...props}
     >
-      {/* The hit area is 2.75rem of mostly empty space, so the ring lands on
-          the mark itself rather than floating a halo around nothing. */}
+      {/* The hit area is mostly empty space, so the ring lands on the mark
+          itself rather than floating a halo around nothing. */}
       <CheckboxIndicator
         checked={checked}
         className="group-focus-visible:ring-[3px] group-focus-visible:ring-ring/70"

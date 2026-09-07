@@ -68,9 +68,9 @@ function TagFilterMenu({
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-haspopup="true"
-        className="inline-flex h-11 min-h-11 max-w-full items-center gap-2 rounded-full border border-input bg-background px-3.5 text-sm font-normal text-muted-foreground shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
+        className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-input bg-background px-3 text-[0.8125rem] font-normal text-muted-foreground shadow-sm pointer-coarse:h-9 transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent hover:text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
-        <Tags aria-hidden="true" className="size-4 shrink-0" />
+        <Tags aria-hidden="true" className="size-3.5 shrink-0" />
         {active.length > 0 ? (
           <>
             <span aria-hidden="true" className="flex shrink-0 -space-x-1">
@@ -101,8 +101,8 @@ function TagFilterMenu({
       {active.length > 0 ? (
         <Button
           variant="ghost"
-          size="icon"
-          className="size-10 min-h-10 min-w-10 shrink-0 text-muted-foreground"
+          size="icon-sm"
+          className="shrink-0 text-muted-foreground"
           aria-label="Clear tag filter"
           title="Clear tag filter"
           onClick={() => onSelectedChange([])}
@@ -122,7 +122,7 @@ function TagFilterMenu({
             className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2.5rem))] origin-top-left overflow-hidden rounded-lg bg-popover shadow-popover"
           >
             {sorted.length === 0 ? (
-              <div className="px-4 py-5 text-center">
+              <div className="px-4 py-4 text-center">
                 <p className="text-sm font-medium text-foreground">No tags yet</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Tags you create show up here to filter by.
@@ -169,7 +169,7 @@ function TagFilterMenu({
                           role="checkbox"
                           aria-checked={checked}
                           onClick={() => toggle(tag.id)}
-                          className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
+                          className="flex min-h-9 w-full items-center gap-2.5 px-3 text-left text-sm transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:bg-accent/60 outline-none focus-visible:bg-accent focus-visible:inset-ring-2 focus-visible:inset-ring-ring/70"
                         >
                           <TagSwatch color={tag.color} className="size-3.5" />
                           <span
