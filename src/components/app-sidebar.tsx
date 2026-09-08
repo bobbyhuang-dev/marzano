@@ -382,7 +382,7 @@ function AppSidebar({
         data-collapsed={collapsed ? "" : undefined}
         className={cn(
           "group/rail sticky top-0 hidden h-dvh shrink-0 self-start overflow-hidden border-r border-border bg-card transition-[width] duration-base ease-out-cubic lg:block",
-          collapsed ? "w-[4.125rem]" : "w-56",
+          collapsed ? "w-rail" : "w-sidebar",
         )}
       >
         {/* Laid out at the width it is heading for, and only revealed or
@@ -392,7 +392,7 @@ function AppSidebar({
             row whose centred icon lands where the wide row's left-aligned one
             already is: the edge moves, the icons never do. */}
         <div
-          className={cn("flex h-full flex-col", narrow ? "w-[4.125rem]" : "w-56")}
+          className={cn("flex h-full flex-col", narrow ? "w-rail" : "w-sidebar")}
         >
           <SidebarBrand collapsed={narrow} />
           <SidebarNav

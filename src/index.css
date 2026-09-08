@@ -3,6 +3,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* The docked sidebar, open and as a rail. Named here so the toast can
+     centre on the page beside it rather than on the viewport. */
+  --container-sidebar: 14rem;
+  --container-rail: 4.125rem;
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -594,6 +599,24 @@
   }
   .task-markdown .task-list-item input {
     margin-right: 0.375rem;
+  }
+}
+
+/*
+ * A toast is centred on the page, and from lg the page starts after the
+ * sidebar: centred on the viewport it sits a quarter of the sidebar into
+ * the content. sonner's own rule is unlayered, so this one stays outside
+ * `@layer` (where it would lose whatever its specificity), and it has the
+ * same two attributes, so the body prefix is what wins whichever stylesheet
+ * lands last.
+ */
+@variant lg {
+  body [data-sonner-toaster][data-x-position="center"] {
+    left: calc(50% + var(--container-sidebar) / 2);
+    transition: left var(--transition-duration-base) var(--ease-out-cubic);
+  }
+  body:has(aside[data-collapsed]) [data-sonner-toaster][data-x-position="center"] {
+    left: calc(50% + var(--container-rail) / 2);
   }
 }
 
