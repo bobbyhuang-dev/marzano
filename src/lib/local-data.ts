@@ -272,8 +272,15 @@ export class LocalDataStore {
     this.publish({ phase: cause instanceof DOMException && cause.name === "NotAllowedError" ? "access" : "error", message: errorMessage(cause), busy: false });
   }
 
-  /** Selecting an existing folder is always read-only until its preview is accepted. */
-  async inspect(directory: LocalDirectory): Promise<FolderPreview | null> {
+  /**
+   * Selecting an existing folder is always read-only until its preview is accepted.
+   * `reconnecting` marks the stored handle being reopened rather than a folder the
+   * user just picked. The distinction is the caller's, not the handle's: the browser
+   * compares handles by path, so a folder deleted and created again under the same
+   * name looks identical to the one that went missing, and picking it must still
+   * be allowed to start a fresh copy there.
+   */
+  async inspect(directory: LocalDirectory, reconnecting = false): Promise<FolderPreview | null> {
     if (this.status.olderTabChanged) return null;
     this.stopped = true;
     this.publish({ busy: true });
@@ -281,9 +288,9 @@ export class LocalDataStore {
     try {
       const raw = await readFolder(directory);
       if (raw !== null) return { directory, raw, contents: parseData(raw) };
-      // Only an explicitly selected new folder may create a missing live file.
+      // Only an explicitly selected folder may create a missing live file.
       // Reconnecting the active folder must never recreate a missing file silently.
-      if (this.directory && await directory.isSameEntry(this.directory)) {
+      if (reconnecting) {
         throw new Error("marzano.json is missing from the folder. Restore it from marzano-recovery, or choose a new folder to save this copy.");
       }
       this.directory = directory;
@@ -306,7 +313,7 @@ export class LocalDataStore {
       if (await this.directory.requestPermission({ mode: "readwrite" }) !== "granted") {
         throw new DOMException("Folder access wasn’t granted.", "NotAllowedError");
       }
-      return await this.inspect(this.directory);
+      return await this.inspect(this.directory, true);
     } catch (cause) { this.fail(cause); return null; }
   }
 

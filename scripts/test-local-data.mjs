@@ -166,6 +166,16 @@ test("deleted or malformed live files are never silently recreated", async () =>
   }
 });
 
+test("choosing a folder again after it was deleted starts a fresh copy there", async () => {
+  // Browsers compare handles by path, so the recreated folder is the "same" entry
+  // as the one that went missing. Picking it explicitly must still save into it.
+  const original = data(); const folder = new Directory(); const store = new LocalDataStore(original, environment()); await store.inspect(folder);
+  folder.files.delete("marzano.json");
+  assert.equal(await store.inspect(folder), null);
+  assert.equal(store.getSnapshot().phase, "saved");
+  assert.equal(folder.files.get("marzano.json"), serializeData(original));
+});
+
 test("a file changed after preview cannot be accepted", async () => {
   const folder = new Directory(); folder.files.set("marzano.json", serializeData(data()));
   const store = new LocalDataStore(empty(), environment()); const preview = await store.inspect(folder);
