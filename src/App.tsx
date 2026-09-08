@@ -46,6 +46,7 @@ import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DuePhraseInput } from "@/components/due-phrase-input";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
+import { GetStarted } from "@/components/get-started";
 import { GuideDialog } from "@/components/guide-dialog";
 import {
   PomodoroPage,
@@ -88,7 +89,7 @@ import {
   loadCalendarScope,
   saveCalendarScope,
 } from "@/lib/calendar";
-import { saveGuideSeen, shouldOpenGuide } from "@/lib/guide";
+import { guideAtStartup, guideProgress, saveGuideSeen, saveGuideShown, type GuideStepId } from "@/lib/guide";
 import { LATEST_RELEASE } from "@/lib/releases";
 import { isPresent, tombstone } from "@/lib/sync";
 import {
@@ -184,11 +185,14 @@ function AppContent({ store }: { store: LocalDataStore }) {
   const [calendarScope, setCalendarScope] =
     useState<CalendarScope>(loadCalendarScope);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Opened unasked only on a browser that has never been shown it and holds no
-  // work yet; every other way in is a button.
-  const [guideOpen, setGuideOpen] = useState(() =>
-    !storage.upgradeRequired && shouldOpenGuide(tasks.length > 0 || tags.length > 0),
+  // Shown unasked only on a browser that has never been shown it and holds no
+  // work yet, or that was part-way through it; every other way in is a button.
+  const [guide, setGuide] = useState(() =>
+    storage.upgradeRequired
+      ? { shown: false, expanded: false }
+      : guideAtStartup(tasks.length > 0 || tags.length > 0),
   );
+  const [tourOpen, setTourOpen] = useState(false);
   const whatsNew = useWhatsNew();
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   // The name and the due date are one field: a date typed into the name
@@ -523,10 +527,35 @@ function AppContent({ store }: { store: LocalDataStore }) {
     setStatusMessage(`Display size set to ${zoom} percent.`);
   };
 
-  /** Closing it in any way is an answer, so it never opens itself again. */
-  const changeGuideOpen = (open: boolean) => {
-    setGuideOpen(open);
-    if (!open) saveGuideSeen();
+  const showGuide = () => setGuide({ shown: true, expanded: true });
+  const setGuideExpanded = (expanded: boolean) =>
+    setGuide((current) => ({ ...current, expanded }));
+  /** Hiding it is an answer, so it never shows itself again unasked. */
+  const hideGuide = () => {
+    setGuide({ shown: false, expanded: false });
+    saveGuideSeen();
+  };
+  // Written whenever it is on screen, so a reload mid-way brings it back.
+  useEffect(() => {
+    if (guide.shown) saveGuideShown();
+  }, [guide.shown]);
+  const guideSteps = guideProgress({
+    tasks,
+    tags,
+    history: pomodoro.history,
+    folder: storage.folder,
+    canChooseFolder: supportsLocalFolders(),
+  });
+  /** Each step is done in the app, so the row takes the reader to where. */
+  const goToGuideStep = (id: GuideStepId) => {
+    if (id === "focus") {
+      selectView("pomodoro");
+    } else if (id === "keep") {
+      setDataOpen(true);
+    } else {
+      selectView("tasks");
+      titleInputRef.current?.focus();
+    }
   };
 
   const selectAnnounceUpdates = (announce: boolean) => {
@@ -560,7 +589,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
               icon={BookOpen}
               label="Guide"
               collapsed={collapsed}
-              onClick={() => setGuideOpen(true)}
+              onClick={showGuide}
             />
             <SidebarFooterButton
               icon={Sparkles}
@@ -857,7 +886,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setGuideOpen(true)}
+                                onClick={showGuide}
                               >
                                 <BookOpen aria-hidden="true" />
                                 How Marzano works
@@ -944,7 +973,24 @@ function AppContent({ store }: { store: LocalDataStore }) {
           </p>
         </div>
       </main>
-      <GuideDialog open={guideOpen} onOpenChange={changeGuideOpen} />
+      <GetStarted
+        shown={guide.shown}
+        expanded={guide.expanded}
+        onExpandedChange={setGuideExpanded}
+        onHide={hideGuide}
+        steps={guideSteps}
+        onStep={goToGuideStep}
+        onOpenTour={() => setTourOpen(true)}
+      />
+      <GuideDialog
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        onWriteTask={() => {
+          selectView("tasks");
+          titleInputRef.current?.focus();
+        }}
+        onChooseFolder={() => setDataOpen(true)}
+      />
       <WhatsNewDialog
         open={whatsNewOpen}
         onOpenChange={changeWhatsNewOpen}
