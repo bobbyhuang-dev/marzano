@@ -173,7 +173,8 @@ test("choosing a folder again after it was deleted starts a fresh copy there", a
   folder.files.delete("marzano.json");
   assert.equal(await store.inspect(folder), null);
   assert.equal(store.getSnapshot().phase, "saved");
-  assert.equal(folder.files.get("marzano.json"), serializeData(original));
+  // The file's savedAt is stamped by the store, so compare what it holds rather than the text.
+  assert.deepEqual(diskData(folder), original);
 });
 
 test("a file changed after preview cannot be accepted", async () => {
