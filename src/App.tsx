@@ -43,6 +43,7 @@ import {
   DescriptionSelectTrigger,
 } from "@/components/description-picker-dialog";
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
+import { DuePhraseInput } from "@/components/due-phrase-input";
 import { DueSortMenu, SORT_OPTIONS } from "@/components/due-sort-menu";
 import { EmptyPanel } from "@/components/empty-panel";
 import { GuideDialog } from "@/components/guide-dialog";
@@ -56,6 +57,7 @@ import {
 } from "@/components/subtask-picker-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { TagFilterMenu } from "@/components/tag-filter-menu";
+import { TagMentionMenu } from "@/components/tag-mention-menu";
 import { type TagValues } from "@/components/tag-form-dialog";
 import {
   TagPickerDialog,
@@ -66,13 +68,14 @@ import { type TaskChanges } from "@/components/task-form-dialog";
 import { TaskList } from "@/components/task-list";
 import { WhatsNewDialog } from "@/components/whats-new-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useCompletedCleanup } from "@/hooks/use-completed-cleanup";
+import { useDuePhrase } from "@/hooks/use-due-phrase";
 import { useDueReminders } from "@/hooks/use-due-reminders";
 import { usePomodoro } from "@/hooks/use-pomodoro";
+import { useTagMention } from "@/hooks/use-tag-mention";
 import { useTheme } from "@/hooks/use-theme";
 import { useWhatsNew } from "@/hooks/use-whats-new";
 import {
@@ -188,8 +191,9 @@ function AppContent({ store }: { store: LocalDataStore }) {
   );
   const whatsNew = useWhatsNew();
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [dueValue, setDueValue] = useState<string | null>(null);
+  // The name and the due date are one field: a date typed into the name
+  // ("Call mum tmr") is the due date until it is deleted or a date is picked.
+  const draft = useDuePhrase();
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
   const [draftSubtasks, setDraftSubtasks] = useState<Subtask[]>([]);
   const [draftDescription, setDraftDescription] = useState("");
@@ -213,6 +217,18 @@ function AppContent({ store }: { store: LocalDataStore }) {
   const openTag =
     view === "tags" && openTagId ? (tagsById.get(openTagId) ?? null) : null;
   const draftTags = resolveTags(draftTagIds, tagsById);
+  // A "#" in the name opens the tags; the one picked joins the chip below and
+  // its words leave the name, so a tag is typed without leaving the field.
+  const mention = useTagMention({
+    tags: presentTags,
+    value: draft.title,
+    onValueChange: draft.setTitle,
+    onPick: (tag) => {
+      setDraftTagIds((ids) => (ids.includes(tag.id) ? ids : [...ids, tag.id]));
+      setStatusMessage(`Tagged ${tag.name}.`);
+    },
+    inputRef: titleInputRef,
+  });
 
   useDueReminders(presentTasks, setTasks);
   useCompletedCleanup(setTasks);
@@ -330,23 +346,21 @@ function AppContent({ store }: { store: LocalDataStore }) {
 
   const handleAddTask = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmedTitle = title.trim();
 
-    if (!trimmedTitle) {
+    if (!draft.cleanTitle) {
       setError("Enter a task name.");
       titleInputRef.current?.focus();
       return;
     }
 
     addTask({
-      title: trimmedTitle,
-      dueAt: dueValue,
+      title: draft.cleanTitle,
+      dueAt: draft.dueAt,
       tagIds: draftTagIds,
       description: draftDescription,
       subtasks: draftSubtasks,
     });
-    setTitle("");
-    setDueValue(null);
+    draft.reset();
     setDraftTagIds([]);
     setDraftSubtasks([]);
     setDraftDescription("");
@@ -677,22 +691,31 @@ function AppContent({ store }: { store: LocalDataStore }) {
                       <Label htmlFor={titleId} className="sr-only">
                         Task name
                       </Label>
-                      <Input
+                      <DuePhraseInput
+                        {...mention.inputProps}
                         ref={titleInputRef}
                         id={titleId}
-                        value={title}
+                        value={draft.title}
+                        phrase={draft.phrase}
+                        mention={mention.mention}
                         onChange={(event) => {
-                          setTitle(event.target.value);
+                          mention.inputProps.onChange(event);
                           if (error) setError("");
                         }}
-                        placeholder="What needs doing?"
+                        placeholder={
+                          presentTags.length > 0
+                            ? "What needs doing? Type # to add a tag"
+                            : "What needs doing?"
+                        }
                         aria-invalid={Boolean(error)}
                         aria-describedby={error ? errorId : undefined}
                         autoComplete="off"
                         spellCheck={false}
                         data-lpignore="true"
                         data-1p-ignore
-                      />
+                      >
+                        <TagMentionMenu field={mention} />
+                      </DuePhraseInput>
                     </div>
                     <Button type="submit" className="shrink-0">
                       <Plus aria-hidden="true" />
@@ -704,31 +727,35 @@ function AppContent({ store }: { store: LocalDataStore }) {
                       lines down rather than below a wall of empty fields. */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <DueDatePickerDialog
-                      value={dueValue}
-                      onValueChange={setDueValue}
-                      title={dueValue ? "Change due date" : "Add due date"}
+                      value={draft.dueAt}
+                      onValueChange={draft.setDueAt}
+                      title={draft.dueAt ? "Change due date" : "Add due date"}
                       trigger={
                         <Button
                           id={dueId}
                           variant="outline"
                           size="sm"
                           aria-label={
-                            dueValue
-                              ? `Due ${formatDueDate(dueValue)}. Change due date`
+                            draft.dueAt
+                              ? `Due ${formatDueDate(draft.dueAt)}. Change due date`
                               : "Add due date"
                           }
                           className={cn(
                             "max-w-full rounded-full font-normal",
-                            !dueValue && "text-muted-foreground",
+                            // Set, the chip takes the tint of the boxed words
+                            // in the name, so the two read as one date.
+                            draft.dueAt
+                              ? "border-primary/30 bg-primary/10 text-foreground hover:bg-primary/15"
+                              : "text-muted-foreground",
                           )}
                         >
-                          {dueValue ? (
+                          {draft.dueAt ? (
                             <CalendarClock aria-hidden="true" />
                           ) : (
                             <CalendarPlus aria-hidden="true" />
                           )}
                           <span className="truncate tabular-nums">
-                            {dueValue ? formatDueDate(dueValue) : "Due date"}
+                            {draft.dueAt ? formatDueDate(draft.dueAt) : "Due date"}
                           </span>
                         </Button>
                       }

@@ -13,6 +13,9 @@
     "deploy": "pnpm build && wrangler deploy",
     "icons": "node scripts/render-icons.mjs",
     "lint": "eslint .",
+    "test": "node --test scripts/test-*.mjs",
+    "test:due-phrase": "node --test scripts/test-due-phrase.mjs",
+    "test:tag-mention": "node --test scripts/test-tag-mention.mjs",
     "test:storage": "node --test scripts/test-local-data.mjs",
     "preview": "vite preview"
   },

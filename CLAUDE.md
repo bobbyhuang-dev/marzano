@@ -14,7 +14,7 @@ pnpm preview   # serve the built dist/
 pnpm icons     # re-render public/ favicons from src/lib/brand.ts (needs Node 24)
 ```
 
-`pnpm test:storage` runs focused storage regression tests with the built-in Node 24 test runner and TypeScript transpilation. Run it for persistence changes, plus `pnpm lint` and `pnpm build`.
+`pnpm test:storage` runs focused storage regression tests with the built-in Node 24 test runner and TypeScript transpilation. Run it for persistence changes, plus `pnpm lint` and `pnpm build`. `pnpm test:due-phrase` covers the dates read out of a task name and `pnpm test:tag-mention` the `#tag` mentions typed into one (`pnpm test` runs all three).
 
 ## Architecture
 
@@ -25,7 +25,9 @@ A single-page, offline-only task manager: React 19 + Vite 8 + Tailwind v4 + shad
 **`src/lib/` holds the domain logic; components stay presentational.** Each module owns one slice of persisted state and exports pure helpers plus its own `load*`/`save*`:
 
 - `lib/tasks.ts` — `Task`, due-date parsing/formatting, sorting, completion retention.
+- `lib/due-phrase.ts` — `parseDuePhrase`, which reads a due date out of a task name as it is typed ("Call mum tmr", "Pay rent by friday", "Dentist sep 12 at 3pm"), and `removeDuePhrase`, which takes the words out of the saved title. `scripts/test-due-phrase.mjs` is the list of what it accepts and, as importantly, what it leaves alone.
 - `lib/tags.ts` — `Tag`, the 30-colour palette, WCAG-based `readableTextColor`.
+- `lib/tag-mention.ts` — `findTagMention`, the `#tag` being typed at the caret of a task name, `matchTags` (exact, then prefix, then anywhere), `tagAcceptedBySpace` and `removeTagMention`. `scripts/test-tag-mention.mjs` lists what counts as a mention and what does not.
 - `lib/pomodoro.ts` — settings, timer state, session history (types, validation, persistence only; no React).
 - `lib/calendar.ts` — the week/month scope, grid building, grouping tasks by local day.
 - `lib/sync.ts` — `SyncMeta` (`updatedAt`/`deletedAt`), the last-write-wins `mergeById`, tombstone helpers.
@@ -61,6 +63,14 @@ Existing-folder selection previews before applying replace/merge. A missing, mal
 `Task.dueAt` is a union encoded in a string: either `yyyy-MM-dd` (day-only, comes due at *end* of that local day) or a full ISO instant. Never call `new Date(task.dueAt)` directly — use `dueAtToDate`, `dueAtToDeadline`, and `formatDueDate` from `lib/tasks.ts`, which branch on `isDateOnlyDue`.
 
 `dueUrgency` in `lib/tasks.ts` grades a due value `overdue | today | tomorrow | soon | later` (overdue agrees with `isTaskDue`; the rest are local calendar days, `soon` being the coming week), and `components/task-due-date.tsx` maps that to a text colour: `destructive` for overdue, `muted-foreground` for later, and the `--due-today|tomorrow|soon` tokens in `index.css` between. `hooks/use-today.ts` is one shared `useSyncExternalStore` that ticks past local midnight and on focus/visibility, so every "today" label turns over together; render every due date through `TaskDueDate` (or `DueDateText` where there is no room for the icon) rather than `text-muted-foreground`.
+
+### Dates typed into the name
+
+`hooks/use-due-phrase.ts` owns the name and the due date of a task being written, in the composer and in `task-form-dialog.tsx`, because one changes the other. `parseDuePhrase` runs on every keystroke; the last date phrase in the name wins, it reaches back over an "on", "by" or "due", and a name that is nothing but a date is not a match. Words that are also ordinary words (`sat`, `mon`, `sun`, `wed`, a bare `5pm`) count only at the end of the name; `tom` is not a word for tomorrow and `may` needs a day after it. `components/due-phrase-input.tsx` draws the box: an `<input>` cannot colour part of its text, so an `aria-hidden` copy in the same font and gutter sits over the field, transparent except the tint on the phrase, and follows the field's `scrollLeft`. Three rules for the two sources of a date: deleting the phrase deletes its date; picking a date by hand wins and turns the phrase back into plain words (its text goes into `ignored`, so it is not re-read on the next keystroke, until a different phrase replaces it); and a task opened for editing starts with its name's phrase ignored, since its date was decided when it was written. `cleanTitle` is what is saved, the phrase removed and the gap closed. The sr-only hint the input adds to `aria-describedby` is the only way a screen reader learns the words were read as a date.
+
+### Tags typed into the name
+
+`hooks/use-tag-mention.ts` reads a `#` mention back out of the name and the caret on every change, so nothing has to be kept in step with the field; its one memory is which `#` was waved off with Escape, and that lasts until that `#` is deleted or typed again. A `#` counts only at the start of a word, and the mention runs past a space only while some tag name still begins with the words so far, so a `#123` that was never a tag becomes ordinary text as soon as the reader moves on. Tab fills the highlighted tag's name in behind the `#` and leaves the list open (a name already complete is taken as chosen). Picking a tag (Enter, a click, or a space after a name typed out in full and not the start of a longer one) takes the words out of the name and hands the tag to `onPick`, which adds it to the draft's tag ids: the name never carries the tag, the Tags chip does. The placeholder says "Type # to add a tag" only once a tag exists to add. `components/tag-mention-menu.tsx` is the list under the field, a `listbox` the input names through `aria-activedescendant`, so the keyboard stays in the field; its rows swallow `pointerdown` so a click does not blur the input and close the list first. `DuePhraseInput` draws the mention box beside the due-phrase box; where the two overlap ("#tmr") the mention wins. Radix hears Escape on the document in the capture phase, so `task-form-dialog.tsx` claims it in `onEscapeKeyDown` while the list is open, or the dialog would close.
 
 ### Manual order and reordering
 

@@ -87,6 +87,7 @@ const GUIDE_STEPS: GuideStep[] = [
     summary:
       "A deadline is either a day or a day and a time, and Marzano says when it lands.",
     points: [
+      "Type the date into the name (\"Call mum tmr\", \"Pay rent by friday\", \"Dentist sep 12 at 3pm\") and it is read as you go. Deleting the words removes it again.",
       "Day-only tasks come due at the end of that day; the picker has Tomorrow and Next week.",
       "A reminder is raised when a task falls due, including in a tab left open in the background.",
       "Calendar lays your open tasks out on the days they are due, a week or a month at a time.",

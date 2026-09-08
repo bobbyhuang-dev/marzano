@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { CalendarClock, CalendarPlus, Plus } from "lucide-react";
 
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
+import { DuePhraseInput } from "@/components/due-phrase-input";
 import { DescriptionEditor } from "@/components/markdown-description";
 import {
   Field,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/field";
 import { SubtaskFields } from "@/components/subtask-fields";
 import { type TagValues } from "@/components/tag-form-dialog";
+import { TagMentionMenu } from "@/components/tag-mention-menu";
 import {
   TagPickerDialog,
   TagSelectTrigger,
@@ -28,7 +30,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   createSubtask,
   formatDueDate,
@@ -37,6 +38,8 @@ import {
 } from "@/lib/tasks";
 import { resolveTags, tagsById as toTagsById, type Tag } from "@/lib/tags";
 import { cn, focusDialogTitleOnTouch } from "@/lib/utils";
+import { useDuePhrase } from "@/hooks/use-due-phrase";
+import { useTagMention } from "@/hooks/use-tag-mention";
 
 export interface TaskChanges {
   title: string;
@@ -72,14 +75,24 @@ function TaskFormDialog({
   onCreateTag,
 }: TaskFormDialogProps) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [dueAt, setDueAt] = useState<string | null>(null);
+  // One field for the name and its due date, as on the task page: a date
+  // typed into the name is the due date until a date is picked instead.
+  const draft = useDuePhrase();
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [invalidSubtaskId, setInvalidSubtaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const dialogTitleRef = useRef<HTMLHeadingElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const mention = useTagMention({
+    tags,
+    value: draft.title,
+    onValueChange: draft.setTitle,
+    onPick: (tag) =>
+      setTagIds((ids) => (ids.includes(tag.id) ? ids : [...ids, tag.id])),
+    inputRef: titleInputRef,
+  });
   const fieldId = useId();
   const dueFieldId = `${fieldId}-due`;
   const errorId = `${fieldId}-error`;
@@ -90,8 +103,7 @@ function TaskFormDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (nextOpen) {
-      setTitle(task?.title ?? "");
-      setDueAt(task ? task.dueAt : defaultDueAt);
+      draft.reset(task?.title ?? "", task ? task.dueAt : defaultDueAt);
       setTagIds(task?.tagIds ?? []);
       setDescription(task?.description ?? "");
       setSubtasks(task?.subtasks ?? []);
@@ -106,7 +118,7 @@ function TaskFormDialog({
     // form that renders the trigger, which would submit that form too.
     event.stopPropagation();
 
-    const nextTitle = title.trim();
+    const nextTitle = draft.cleanTitle;
 
     if (!nextTitle) {
       setError("Enter a task name.");
@@ -129,7 +141,7 @@ function TaskFormDialog({
 
     onSubmit({
       title: nextTitle,
-      dueAt,
+      dueAt: draft.dueAt,
       tagIds,
       description,
       subtasks: subtasks.map((subtask) => ({
@@ -159,6 +171,11 @@ function TaskFormDialog({
         onOpenAutoFocus={(event) =>
           focusDialogTitleOnTouch(event, dialogTitleRef.current)
         }
+        // Radix hears Escape on the document before the field does, so the
+        // tag list has to claim it here or the whole dialog would close.
+        onEscapeKeyDown={(event) => {
+          if (mention.open) event.preventDefault();
+        }}
       >
         <form className="flex min-h-0 flex-col" onSubmit={handleSubmit}>
           <DialogHeader>
@@ -177,22 +194,34 @@ function TaskFormDialog({
               <FieldGroup>
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor={fieldId}>Task name</FieldLabel>
-                  <Input
+                  <DuePhraseInput
+                    {...mention.inputProps}
+                    ref={titleInputRef}
                     id={fieldId}
                     name="title"
-                    value={title}
+                    value={draft.title}
+                    phrase={draft.phrase}
+                    mention={mention.mention}
                     onChange={(event) => {
-                      setTitle(event.target.value);
+                      mention.inputProps.onChange(event);
                       if (error) setError("");
                     }}
-                    placeholder={editing ? undefined : "What needs doing?"}
+                    placeholder={
+                      editing
+                        ? undefined
+                        : tags.length > 0
+                          ? "What needs doing? Type # to add a tag"
+                          : "What needs doing?"
+                    }
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? errorId : undefined}
                     autoComplete="off"
                     spellCheck={false}
                     data-lpignore="true"
                     data-1p-ignore
-                  />
+                  >
+                    <TagMentionMenu field={mention} />
+                  </DuePhraseInput>
                   {error ? <FieldError id={errorId}>{error}</FieldError> : null}
                 </Field>
                 {open ? (
@@ -204,25 +233,27 @@ function TaskFormDialog({
                 <Field>
                   <FieldLabel htmlFor={dueFieldId}>Due date</FieldLabel>
                   <DueDatePickerDialog
-                    value={dueAt}
-                    onValueChange={setDueAt}
-                    title={dueAt ? "Change due date" : "Add due date"}
+                    value={draft.dueAt}
+                    onValueChange={draft.setDueAt}
+                    title={draft.dueAt ? "Change due date" : "Add due date"}
                     trigger={
                       <Button
                         id={dueFieldId}
                         variant="outline"
                         className={cn(
                           "w-full justify-start overflow-hidden px-3 font-normal",
-                          !dueAt && "text-muted-foreground",
+                          draft.dueAt
+                            ? "border-primary/30 bg-primary/10 hover:bg-primary/15"
+                            : "text-muted-foreground",
                         )}
                       >
-                        {dueAt ? (
+                        {draft.dueAt ? (
                           <CalendarClock aria-hidden="true" />
                         ) : (
                           <CalendarPlus aria-hidden="true" />
                         )}
                         <span className="truncate tabular-nums">
-                          {dueAt ? formatDueDate(dueAt) : "Add due date"}
+                          {draft.dueAt ? formatDueDate(draft.dueAt) : "Add due date"}
                         </span>
                       </Button>
                     }
