@@ -180,7 +180,11 @@ function AccentChoice({ value, onValueChange, labelledBy }: AccentChoiceProps) {
       ref={rowRef}
       role="radiogroup"
       aria-labelledby={labelledBy}
-      className="grid max-w-[19rem] grid-cols-7 gap-2"
+      // A tight cluster rather than a row stretched to the dialog's width:
+      // seven small discs spread across it read as scattered. The columns
+      // top out at control size and only shrink when a narrow screen leaves
+      // no room for seven of them, so the row never wraps.
+      className="grid grid-cols-[repeat(7,minmax(0,2.25rem))] gap-2 pointer-coarse:grid-cols-[repeat(7,minmax(0,2.5rem))]"
     >
       {ACCENTS.map((accent, index) => {
         const selected = index === selectedIndex;
@@ -295,6 +299,7 @@ function SettingsDialog({
   onAnnounceUpdatesChange,
 }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
+  const accentLabelId = useId();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -324,15 +329,29 @@ function SettingsDialog({
                   />
                 )}
               </Field>
-              <Field label="Accent colour" hint={accentLabel(accent)}>
-                {(labelId) => (
-                  <AccentChoice
-                    value={accent}
-                    onValueChange={onAccentChange}
-                    labelledBy={labelId}
-                  />
-                )}
-              </Field>
+              {/* Laid out like the switch rows below -- label and current
+                  value at the start, the control at the end -- because the
+                  swatches are a small control, not a full-width one like the
+                  theme choice, and a narrow screen drops them onto their own
+                  line rather than shrinking them. */}
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                <div className="grid gap-1">
+                  <span
+                    id={accentLabelId}
+                    className="text-sm font-medium leading-none"
+                  >
+                    Accent colour
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {accentLabel(accent)}
+                  </span>
+                </div>
+                <AccentChoice
+                  value={accent}
+                  onValueChange={onAccentChange}
+                  labelledBy={accentLabelId}
+                />
+              </div>
             </Section>
 
             <Section
