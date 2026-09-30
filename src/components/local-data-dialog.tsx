@@ -13,6 +13,7 @@ interface Props {
   store: LocalDataStore;
   status: DataStatus;
   onApply: (contents: DataContents) => void;
+  onAnnounce: (message: string) => void;
 }
 
 function countLine(counts: BackupSummary): string {
@@ -33,7 +34,7 @@ function hasData(contents: DataContents): boolean {
 /** What the dialog leads with: the one fact about where the tasks are right now. */
 function describe(status: DataStatus, supported: boolean): string {
   if (status.folder) return "Files in the folder survive clearing browser data. Choose the same folder again to get them back.";
-  if (!supported) return "This browser can’t save to a folder. Use Chrome or Edge on a computer, or keep a copy by hand.";
+  if (!supported) return "Your tasks are saved automatically in this browser. Clearing site data removes them; save a copy to keep a backup outside the browser.";
   return "Your tasks are only in this browser. Choose a folder on this computer and Marzano keeps them saved there.";
 }
 
@@ -42,12 +43,13 @@ function describe(status: DataStatus, supported: boolean): string {
  * page rather than a manual: the current state and the one thing to do about
  * it, with the file actions kept quiet in the footer.
  */
-export function LocalDataDialog({ open, onOpenChange, store, status, onApply }: Props) {
+export function LocalDataDialog({ open, onOpenChange, store, status, onApply, onAnnounce }: Props) {
   const supported = supportsLocalFolders();
   const [preview, setPreview] = useState<FolderPreview | null>(null);
   const [fileData, setFileData] = useState<DataContents | null>(null);
   const [fileName, setFileName] = useState("");
   const [olderData, setOlderData] = useState(false);
+  const [persistenceMessage, setPersistenceMessage] = useState("");
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
@@ -59,7 +61,21 @@ export function LocalDataDialog({ open, onOpenChange, store, status, onApply }: 
 
   const reset = () => {
     setOlderData(false); setPreview(null); setFileData(null); setError(""); setConfirmReplace(false);
+    setPersistenceMessage("");
     store.cancelPreview();
+  };
+  const protectStorage = async () => {
+    setError(""); setPersistenceMessage(""); setWorking(true);
+    try {
+      const granted = await store.protectBrowserStorage();
+      const message = granted
+        ? "Automatic cleanup protection is on. Clearing site data still removes your tasks."
+        : "Permission wasn’t granted. Tasks still save in this browser, but automatic cleanup may remove them. Save a copy as a backup.";
+      setPersistenceMessage(message);
+      onAnnounce(message);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn’t protect browser storage. Save a copy as a backup.");
+    } finally { setWorking(false); }
   };
   const choose = async (reconnect: boolean) => {
     setError(""); setWorking(true);
@@ -137,6 +153,21 @@ export function LocalDataDialog({ open, onOpenChange, store, status, onApply }: 
               </Button>
               {status.upgradeRequired && !status.upgradeCompleted && (
                 <p className="text-sm text-muted-foreground">Your current tasks are copied into it. Nothing is removed from this browser.</p>
+              )}
+            </section>
+          )}
+
+          {!supported && !incoming && !status.olderTabChanged && (
+            <section className="grid gap-3" aria-label="Browser storage">
+              <p role="status" className="text-sm text-muted-foreground">
+                {persistenceMessage || (status.browserPersistent
+                  ? "Automatic cleanup protection is on. Clearing site data still removes your tasks."
+                  : "You can ask the browser to protect saved tasks from automatic cleanup when storage is low. Keep regular backups with Save a copy.")}
+              </p>
+              {status.browserPersistent !== true && (
+                <Button disabled={busy || !!status.cacheWarning} className="justify-self-start" onClick={() => void protectStorage()}>
+                  {working ? "Requesting protection…" : "Protect browser storage"}
+                </Button>
               )}
             </section>
           )}

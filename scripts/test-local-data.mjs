@@ -305,6 +305,64 @@ test("users who skip folder setup can edit and reload when IndexedDB is unavaila
   for (const [key, value] of before) assert.equal(storage.getItem(key), value, key);
 });
 
+test("denied eviction protection leaves browser edits durable and folder transfer incomplete", async () => {
+  const original = data("Before permission"); const env = environment();
+  env.isPersistent = async () => false;
+  env.requestPersistence = async () => false;
+  env.readLegacy = () => ({ fingerprint: "legacy", existingUser: true, contents: original });
+  const store = new LocalDataStore(empty(), env); await store.initialize();
+  const changed = data("Saved without permission");
+  store.update(changed); await store.flush();
+  assert.equal(await store.protectBrowserStorage(), false);
+  const reloaded = new LocalDataStore(empty(), env); await reloaded.initialize();
+  assert.deepEqual(reloaded.contents, changed);
+  assert.equal(reloaded.getSnapshot().browserPersistent, false);
+  assert.equal(reloaded.getSnapshot().upgradeCompleted, false);
+  assert.equal(reloaded.hasUnsavedChanges, false);
+});
+
+test("granted browser protection is read again on reload without claiming a folder save", async () => {
+  const original = data("Protected task"); const env = environment();
+  let persistent = false;
+  env.isPersistent = async () => persistent;
+  env.requestPersistence = async () => persistent = true;
+  env.readLegacy = () => ({ fingerprint: "legacy", existingUser: true, contents: original });
+  const store = new LocalDataStore(empty(), env); await store.initialize();
+  await store.protectBrowserStorage();
+  const reloaded = new LocalDataStore(empty(), env); await reloaded.initialize();
+  assert.deepEqual(reloaded.contents, original);
+  assert.equal(reloaded.getSnapshot().browserPersistent, true);
+  assert.equal(reloaded.getSnapshot().phase, "browser");
+  assert.equal(reloaded.getSnapshot().folder, null);
+  assert.equal(reloaded.getSnapshot().upgradeCompleted, false);
+  persistent = false;
+  const revoked = new LocalDataStore(empty(), env); await revoked.initialize();
+  assert.equal(revoked.getSnapshot().browserPersistent, false);
+  assert.deepEqual(revoked.contents, original);
+});
+
+test("unavailable persistence permission does not block browser saving or loading", async () => {
+  const env = environment();
+  env.isPersistent = async () => { throw new Error("StorageManager unavailable"); };
+  env.requestPersistence = async () => { throw new Error("Permission unavailable"); };
+  const store = new LocalDataStore(empty(), env); await store.initialize();
+  await assert.rejects(store.protectBrowserStorage(), /Permission unavailable/);
+  const changed = data("Still saved"); store.update(changed); await store.flush();
+  const reloaded = new LocalDataStore(empty(), env); await reloaded.initialize();
+  assert.deepEqual(reloaded.contents, changed);
+  assert.equal(reloaded.getSnapshot().browserPersistent, null);
+  assert.equal(reloaded.getSnapshot().cacheWarning, "");
+});
+
+test("browser-only storage failure warns to download a copy rather than wait for a folder", async () => {
+  const env = environment();
+  env.writeCache = async () => { throw new Error("Quota exceeded"); };
+  const store = new LocalDataStore(data(), env); await store.initialize();
+  assert.equal(store.hasUnsavedChanges, true);
+  assert.match(store.getSnapshot().cacheWarning, /save a copy before closing/);
+  assert.equal(store.getSnapshot().phase, "browser");
+});
+
 test("failed or canceled transfer never marks an existing user as migrated", async () => {
   const original = data(); const env = environment();
   env.readLegacy = () => ({ fingerprint: "old", existingUser: true, contents: original });

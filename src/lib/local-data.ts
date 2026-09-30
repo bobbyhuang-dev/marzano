@@ -17,6 +17,7 @@ export interface DataStatus {
   upgradeRequired: boolean;
   upgradeCompleted: boolean;
   olderTabChanged: boolean;
+  browserPersistent: boolean | null;
 }
 /** The status in as few words as a pill can hold; the dialog carries the detail. */
 export function storageLabel(status: DataStatus): string {
@@ -41,10 +42,12 @@ export interface DataEnvironment {
   readLegacy?: () => LegacySnapshot;
   writeCache: (data: CachedData) => Promise<void>;
   lock: <T>(action: () => Promise<T>) => Promise<T>;
+  isPersistent?: () => Promise<boolean>;
+  requestPersistence?: () => Promise<boolean>;
 }
 
 export function supportsLocalFolders(): boolean {
-  return window.isSecureContext && "showDirectoryPicker" in window;
+  return window.isSecureContext && "showDirectoryPicker" in window && typeof window.showDirectoryPicker === "function";
 }
 
 export function downloadCopy(contents: DataContents) {
@@ -64,6 +67,11 @@ const browserEnvironment: DataEnvironment = {
   readLegacy: readLegacySnapshot,
   writeCache,
   lock: async (action) => await navigator.locks.request("marzano.file-write", action),
+  isPersistent: async () => await navigator.storage.persisted(),
+  requestPersistence: async () => {
+    if (!navigator.storage?.persist) throw new Error("This browser can’t protect storage from automatic cleanup. Save a copy instead.");
+    return await navigator.storage.persist();
+  },
 };
 
 function errorMessage(cause: unknown): string {
@@ -107,7 +115,7 @@ export class LocalDataStore {
   private savedKey: string | null = null;
   private queue: Promise<void> = Promise.resolve();
   private listeners = new Set<() => void>();
-  private status: DataStatus = { phase: "browser", folder: null, message: "", cacheWarning: "", savedAt: null, busy: false, upgradeRequired: false, upgradeCompleted: false, olderTabChanged: false };
+  private status: DataStatus = { phase: "browser", folder: null, message: "", cacheWarning: "", savedAt: null, busy: false, upgradeRequired: false, upgradeCompleted: false, olderTabChanged: false, browserPersistent: null };
   private stopped = false;
   private lastRecovery = "";
   private directoryId: string | null = null;
@@ -144,7 +152,9 @@ export class LocalDataStore {
       });
       this.publish({ cacheWarning: "" });
     } catch {
-      this.publish({ cacheWarning: "Browser storage is unavailable. Keep this tab open until your changes are saved to the folder." });
+      this.publish({ cacheWarning: this.directory
+        ? "Browser storage is unavailable. Keep this tab open until your changes are saved to the folder."
+        : "Browser storage is unavailable. Keep this tab open and save a copy before closing it." });
     }
   }
 
@@ -170,8 +180,11 @@ export class LocalDataStore {
       }
     } catch (cause) {
       if (cause instanceof UnreadableCacheError) this.preserveUnreadableCache = true;
-      this.publish({ cacheWarning: "Browser storage couldn’t be read. Choose your folder again to get your tasks back." });
+      this.publish({ cacheWarning: "Browser storage couldn’t be read. Open a saved data file or choose your folder again to get your tasks back." });
     }
+    try {
+      if (this.env.isPersistent) this.publish({ browserPersistent: await this.env.isPersistent() });
+    } catch { /* Eviction protection is optional; it must not prevent opening the saved tasks. */ }
     if (legacy && legacy.fingerprint !== this.legacyFingerprint) {
       this.recordLegacyChange(legacy);
       return;
@@ -200,6 +213,14 @@ export class LocalDataStore {
       this.completeUpgrade();
       await this.cache();
     } catch (cause) { this.fail(cause); }
+  }
+
+  async protectBrowserStorage(): Promise<boolean> {
+    if (!this.env.requestPersistence) throw new Error("This browser can’t protect storage from automatic cleanup. Save a copy instead.");
+    // Firefox can prompt here; request before any await consumes the click gesture.
+    const granted = await this.env.requestPersistence();
+    this.publish({ browserPersistent: granted });
+    return granted;
   }
 
   update(contents: DataContents) {

@@ -7,6 +7,7 @@ import {
   BellRing,
   Check,
   ChevronRight,
+  Database,
   ExternalLink,
   FileJson,
   FolderOpen,
@@ -221,8 +222,21 @@ function FocusDemo({ dueAt }: { dueAt: string }) {
   );
 }
 
-/** The folder on disk with the file the sample task lives in. */
+/** The storage location and the copy the reader can keep outside the browser. */
 function KeepDemo() {
+  if (!supportsLocalFolders()) return (
+    <div className="grid gap-2 rounded-md bg-background p-3 shadow-card">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Database className="size-4 text-muted-foreground" />
+        In this browser only
+      </div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <FileJson className="size-4" />
+        Save a copy: marzano.json
+      </div>
+      <p className="text-xs text-muted-foreground">Nothing is uploaded. Clearing site data removes saved tasks.</p>
+    </div>
+  );
   return (
     <div className="grid gap-2 rounded-md bg-background p-3 shadow-card">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -641,7 +655,9 @@ function GuideDialog({ open, onOpenChange, onWriteTask, onChooseFolder }: GuideD
                     {step.title}
                   </h3>
                   <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-                    {step.lead}
+                    {step.id === "keep" && !canChooseFolder
+                      ? "Every change saves in this browser. Open Local data to protect storage from automatic cleanup and save a backup."
+                      : step.lead}
                   </p>
                 </div>
 
@@ -657,7 +673,11 @@ function GuideDialog({ open, onOpenChange, onWriteTask, onChooseFolder }: GuideD
 
                 <MoreAbout
                   label={step.moreLabel}
-                  lines={step.more}
+                  lines={step.id === "keep" && !canChooseFolder ? [
+                    "Save a copy downloads your tasks, tags and focus history as marzano.json.",
+                    "Open a file restores a backup or merges it with your current tasks.",
+                    "Protection prevents automatic eviction, not clearing site data or the end of a private browsing session.",
+                  ] : step.more}
                   open={moreOpen}
                   onToggle={() => setMoreOpen((current) => !current)}
                 >
@@ -689,11 +709,9 @@ function GuideDialog({ open, onOpenChange, onWriteTask, onChooseFolder }: GuideD
               Try it now
             </Button>
           ) : last ? (
-            canChooseFolder ? (
-              <Button variant="ghost" className="mr-auto" onClick={() => close()}>
-                Later
-              </Button>
-            ) : null
+            <Button variant="ghost" className="mr-auto" onClick={() => close()}>
+              Later
+            </Button>
           ) : (
             <Button variant="ghost" className="mr-auto" onClick={() => close()}>
               Skip
@@ -706,16 +724,10 @@ function GuideDialog({ open, onOpenChange, onWriteTask, onChooseFolder }: GuideD
             </Button>
           ) : null}
           {last ? (
-            canChooseFolder ? (
-              <Button ref={nextRef} onClick={() => close(onChooseFolder)}>
-                <FolderOpen aria-hidden="true" />
-                Choose folder
-              </Button>
-            ) : (
-              <Button ref={nextRef} onClick={() => close()}>
-                Get started
-              </Button>
-            )
+            <Button ref={nextRef} onClick={() => close(onChooseFolder)}>
+              {canChooseFolder ? <FolderOpen aria-hidden="true" /> : <Database aria-hidden="true" />}
+              {canChooseFolder ? "Choose folder" : "Local data"}
+            </Button>
           ) : (
             <Button ref={nextRef} onClick={() => goTo(index + 1)}>
               {first ? "Start" : "Next"}

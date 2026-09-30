@@ -19,23 +19,24 @@ export function StorageUpgradeNotice({ open, supported, onDismiss, onStart, onSa
     <Dialog open={open} onOpenChange={(next) => { if (!next) onDismiss(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Save your tasks to a folder</DialogTitle>
+          <DialogTitle>{supported ? "Save your tasks to a folder" : "Keep your tasks safe"}</DialogTitle>
           <DialogDescription>
             {supported
               ? "Marzano can now keep your tasks in a folder on this computer, where clearing browser data can’t reach them."
-              : "Marzano can now keep your tasks in a folder on your computer. This browser can’t do that, but Chrome or Edge on a computer can."}
+              : "Your tasks save automatically in this browser. You can protect them from automatic cleanup and download a backup."}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="text-sm text-muted-foreground">
           {supported
             ? <p>Choose a folder and your current tasks are copied into it. Nothing is removed from this browser, and you can do this later from <span className="font-medium text-foreground">Local data</span> in the sidebar.</p>
-            : <p>Save a copy here, then open it from <span className="font-medium text-foreground">Local data</span> there. Nothing is removed from this browser.</p>}
+            : <p>Open <span className="font-medium text-foreground">Local data</span> to protect browser storage or save a copy. Clearing site data still removes tasks stored in the browser.</p>}
         </DialogBody>
         <DialogFooter>
+          {!supported && <Button variant="ghost" className="mr-auto" onClick={onSaveCopy}><Download aria-hidden="true" />Save a copy</Button>}
           <Button variant="outline" onClick={onDismiss}>Not now</Button>
           {supported
             ? <Button onClick={onStart}><FolderOpen aria-hidden="true" />Choose folder</Button>
-            : <Button onClick={onSaveCopy}><Download aria-hidden="true" />Save a copy</Button>}
+            : <Button onClick={onStart}>Local data</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

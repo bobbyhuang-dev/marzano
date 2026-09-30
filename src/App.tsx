@@ -628,7 +628,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
       />
 
       <StorageUpgradeNotice open={upgradeOpen && !storage.upgradeCompleted} supported={supportsLocalFolders()} onDismiss={dismissUpgrade} onStart={startUpgrade} onSaveCopy={saveUpgradeCopy} />
-      <LocalDataDialog open={dataOpen} onOpenChange={setDataOpen} store={store} status={storage} onApply={applyData} />
+      <LocalDataDialog open={dataOpen} onOpenChange={setDataOpen} store={store} status={storage} onApply={applyData} onAnnounce={setStatusMessage} />
 
       <main className="min-w-0 flex-1 overflow-x-hidden">
         <div
