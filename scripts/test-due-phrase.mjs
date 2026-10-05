@@ -128,6 +128,45 @@ test("a sat at the end is a saturday, but not in the middle", () => {
   assert.equal(parseDuePhrase("Brunch sat down", now), null);
 });
 
+const numeric = [
+  ["Major Exam 10/16", "Major Exam", "2026-10-16", "10/16"],
+  ["Major Exam by 10/16", "Major Exam", "2026-10-16", "by 10/16"],
+  ["Essay due 9/30", "Essay", "2026-09-30", "due 9/30"],
+  ["Recital 1/5", "Recital", "2027-01-05", "1/5"],
+  ["Recital 1/5/28", "Recital", "2028-01-05", "1/5/28"],
+  ["Recital 01/05/2028", "Recital", "2028-01-05", "01/05/2028"],
+  ["10/16/2026 field trip", "field trip", "2026-10-16", "10/16/2026"],
+  ["Exam 16/10", "Exam", "2026-10-16", "16/10"],
+];
+
+for (const [input, title, dueAt, text] of numeric) {
+  test(`numeric: ${input}`, () => {
+    const match = parseDuePhrase(input, now, false);
+    assert.ok(match, "expected a match");
+    assert.equal(match.text, text);
+    assert.equal(match.dueAt, dueAt);
+    assert.equal(removeDuePhrase(input, match), title);
+  });
+}
+
+test("a numeric date with a time", () => {
+  const match = parseDuePhrase("Exam 10/16 at 3pm", now, false);
+  assert.equal(match?.text, "10/16 at 3pm");
+  assert.equal(match?.dueAt, local(2026, 10, 16, 15, 0));
+});
+
+test("day-first languages read the day first", () => {
+  assert.equal(parseDuePhrase("Exam 3/10", now, true)?.dueAt, "2026-10-03");
+  assert.equal(parseDuePhrase("Exam 3/10", now, false)?.dueAt, "2027-03-10");
+  assert.equal(parseDuePhrase("Exam 10/16", now, true)?.dueAt, "2026-10-16");
+});
+
+for (const input of ["Read pages 7/8 first", "Use 1/2 cup flour", "Score 13/13", "Exam 2/30", "Ratio 1/2/3", "Exam 0/5", "10/16"]) {
+  test(`no numeric date: ${input}`, () => {
+    assert.equal(parseDuePhrase(input, now, false)?.text.match(/\//) ?? null, null);
+  });
+}
+
 test("offsets point at the words", () => {
   const match = parseDuePhrase("Call mum by tmr at 3pm", now);
   assert.equal("Call mum by tmr at 3pm".slice(match.start, match.end), "by tmr at 3pm");

@@ -33,7 +33,7 @@ export interface DuePhraseMatch {
 interface DayPattern {
   regex: RegExp;
   endOnly?: (match: RegExpExecArray) => boolean;
-  resolve: (match: RegExpExecArray, today: Date) => Date | null;
+  resolve: (match: RegExpExecArray, today: Date, dayFirst: boolean) => Date | null;
 }
 
 const WEEKDAYS: Record<string, number> = {
@@ -103,6 +103,22 @@ function upcomingMonthDay(today: Date, month: number, day: number, year?: number
   }
   return null;
 }
+
+/**
+ * Whether this browser's language writes 16/10 for the sixteenth of October,
+ * which decides how a typed "10/16" or "3/4" is read.
+ */
+function localeWritesDayFirst(): boolean {
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "numeric" })
+      .formatToParts(new Date(2000, 11, 31));
+    return parts.findIndex((part) => part.type === "day") < parts.findIndex((part) => part.type === "month");
+  } catch {
+    return false;
+  }
+}
+
+const DAY_FIRST = localeWritesDayFirst();
 
 /** "the 15th": this month if still ahead, else the next month that has one. */
 function upcomingDayOfMonth(today: Date, day: number): Date | null {
@@ -194,6 +210,28 @@ const DAY_PATTERNS: DayPattern[] = [
     resolve: (match) => localDay(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
   },
   {
+    // "10/16", "10/16/26", "16/10/2026" in day-first languages. Without a year
+    // it counts only at the end, where a date goes: earlier in the name "7/8"
+    // is as likely a page range or half a recipe. Where the browser's order
+    // gives an impossible date the other order is meant ("16/10" in the US).
+    regex: new RegExp(
+      String.raw`${BEFORE}(?<![/\d])(\d{1,2})/(\d{1,2})(?:/(\d{4}|\d{2}))?(?![/\d])${AFTER}`,
+      "giu",
+    ),
+    endOnly: (match) => match[3] === undefined,
+    resolve: (match, today, dayFirst) => {
+      const [first, second] = [Number(match[1]), Number(match[2])];
+      const year = match[3] === undefined
+        ? undefined
+        : Number(match[3]) + (match[3].length === 2 ? 2000 : 0);
+      const read = (month: number, day: number) =>
+        month >= 1 && month <= 12 ? upcomingMonthDay(today, month - 1, day, year) : null;
+      return dayFirst
+        ? read(second, first) ?? read(first, second)
+        : read(first, second) ?? read(second, first);
+    },
+  },
+  {
     // "the 15th": a bare ordinal is too often a floor or a place in a queue.
     regex: pattern(String.raw`the\s+(\d{1,2})(?:st|nd|rd|th)`),
     resolve: (match, today) => upcomingDayOfMonth(today, Number(match[1])),
@@ -252,7 +290,11 @@ function isAtEnd(text: string, end: number): boolean {
  * "Pay rent". A name that is only a date is not a match: there would be
  * nothing left to call the task.
  */
-export function parseDuePhrase(text: string, now = new Date()): DuePhraseMatch | null {
+export function parseDuePhrase(
+  text: string,
+  now = new Date(),
+  dayFirst = DAY_FIRST,
+): DuePhraseMatch | null {
   const today = startOfDay(now);
   let best: Candidate | null = null;
 
@@ -270,7 +312,7 @@ export function parseDuePhrase(text: string, now = new Date()): DuePhraseMatch |
   for (const { regex, endOnly, resolve } of DAY_PATTERNS) {
     regex.lastIndex = 0;
     for (let match = regex.exec(text); match; match = regex.exec(text)) {
-      const day = resolve(match, today);
+      const day = resolve(match, today, dayFirst);
       if (!day) continue;
 
       let end = match.index + match[0].length;
