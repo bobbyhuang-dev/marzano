@@ -21,7 +21,7 @@ registerHooks({
 
 const { LocalDataStore } = await import("../src/lib/local-data.ts");
 const { serializeData, parseData, dataKey } = await import("../src/lib/data-file.ts");
-const { createTask, touchTask, createSubtask } = await import("../src/lib/tasks.ts");
+const { createTask, touchTask, createSubtask, sortTasksByDue, reorderBounds } = await import("../src/lib/tasks.ts");
 const { DEFAULT_POMODORO_SETTINGS } = await import("../src/lib/pomodoro.ts");
 const { applyImport } = await import("../src/lib/backup.ts");
 const empty = () => ({ tasks: [], tags: [], pomodoro: { settings: { ...DEFAULT_POMODORO_SETTINGS }, history: [] }, preferences: { dueSort: "default" } });
@@ -217,19 +217,21 @@ test("format roundtrip preserves subtasks, notes, manual order and tombstones", 
 test("rejects lossy, duplicate and unknown-schema input before it can replace data", () => {
   const source = JSON.parse(serializeData(data()));
   for (const modified of [
-    { ...source, version: 3 }, { ...source, tasks: null },
+    { ...source, version: 4 }, { ...source, tasks: null },
     { ...source, preferences: undefined }, { ...source, preferences: { dueSort: "sideways" } },
     { ...source, preferences: { dueSort: "asc", futureField: "must not be lost" } },
     { ...source, tasks: [...source.tasks, source.tasks[0]] },
     { ...source, tasks: [{ ...source.tasks[0], subtasks: [{ id: "broken" }] }] },
     { ...source, tasks: [{ ...source.tasks[0], futureField: "must not be lost" }] },
+    { ...source, tasks: [{ ...source.tasks[0], importance: 4 }] },
+    { ...source, tasks: [{ ...source.tasks[0], importance: undefined }] },
   ]) assert.throws(() => parseData(JSON.stringify(modified)));
 });
 
 test("the task sort is saved in the file, opens with it, and only a replace adopts a file's", () => {
   const source = { ...data(), preferences: { dueSort: "asc" } };
   const text = serializeData(source);
-  assert.equal(JSON.parse(text).version, 2);
+  assert.equal(JSON.parse(text).version, 3);
   assert.equal(parseData(text).preferences.dueSort, "asc");
   assert.equal(applyImport("merge", empty(), source).preferences.dueSort, "default");
   assert.equal(applyImport("replace", empty(), source).preferences.dueSort, "asc");
@@ -240,6 +242,24 @@ test("version 1 live files open with the default sort", () => {
   assert.equal(parseData(JSON.stringify(source)).preferences.dueSort, "default");
   source.preferences = { dueSort: "desc" };
   assert.equal(parseData(JSON.stringify(source)).preferences.dueSort, "desc");
+});
+
+test("importance is saved in the file, and files from before it open unmarked", () => {
+  const source = data(); source.tasks[0] = touchTask(source.tasks[0], { importance: 3 });
+  assert.equal(parseData(serializeData(source)).tasks[0].importance, 3);
+  const older = JSON.parse(serializeData(data())); older.version = 2; delete older.tasks[0].importance;
+  assert.equal(parseData(JSON.stringify(older)).tasks[0].importance, 0);
+});
+
+test("a date sort breaks a tie on the deadline by importance, and reordering stays inside it", () => {
+  const task = (title, dueAt, importance) => createTask(title, dueAt, [], "", [], importance);
+  const tasks = [task("Low", "2026-10-09", 1), task("Undated", null, 0), task("High", "2026-10-09", 3),
+    task("Undated high", null, 3), task("Later", "2026-10-12", 3), task("Also low", "2026-10-09", 1)];
+  const titles = (sort) => sortTasksByDue(tasks, sort).map((item) => item.title);
+  assert.deepEqual(titles("asc"), ["High", "Low", "Also low", "Later", "Undated high", "Undated"]);
+  assert.deepEqual(titles("desc"), ["Later", "High", "Low", "Also low", "Undated high", "Undated"]);
+  assert.deepEqual(reorderBounds(sortTasksByDue(tasks, "asc"), "asc", 1), { min: 1, max: 2 });
+  assert.deepEqual(reorderBounds(sortTasksByDue(tasks, "asc"), "asc", 0), { min: 0, max: 0 });
 });
 
 test("version 1 and 2 backups remain readable", () => {

@@ -3,9 +3,10 @@ import { DEFAULT_PREFERENCES, parseBackup, type BackupContents } from "@/lib/bac
 export type DataContents = BackupContents;
 export const DATA_FILE_NAME = "marzano.json";
 const FORMAT = "marzano.data";
-// Version 2 added `preferences` (the task sort). Older readers must reject it
-// rather than drop the field on their next save.
-const VERSION = 2;
+// Version 2 added `preferences` (the task sort) and version 3 each task's
+// `importance`. Older readers must reject them rather than drop the fields on
+// their next save.
+const VERSION = 3;
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export function serializeData(contents: DataContents): string {
@@ -52,14 +53,19 @@ export function parseData(text: string): DataContents {
       throw new Error("This file contains duplicate records. It has been left untouched.");
     }
   }
-  // Version 1 backups predate descriptions/subtasks, and files before the
-  // preferences get the defaults. Only those omissions are migrated.
+  // Version 1 backups predate descriptions/subtasks, files before the
+  // preferences get the defaults, and files before importance leave tasks
+  // unmarked. Only those omissions are migrated.
   const source = {
     tasks: value.tasks, tags: value.tags, pomodoro: value.pomodoro,
     preferences: hasPreferences || value.preferences !== undefined ? value.preferences : DEFAULT_PREFERENCES,
   };
   if (value.format === "marzano.backup" && value.version === 1) {
     source.tasks = source.tasks.map((task: object) => ({ description: "", subtasks: [], ...task }));
+  }
+  // Every file before version 3 predates importance, so its tasks are unmarked.
+  if (value.format === "marzano.backup" || value.version < 3) {
+    source.tasks = source.tasks.map((task: object) => ({ importance: 0, ...task }));
   }
   if (canonical(source) !== canonical(result)) {
     throw new Error("This file contains invalid or unrecognized data. It has been left untouched.");

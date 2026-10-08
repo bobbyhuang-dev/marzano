@@ -65,6 +65,7 @@ import {
   TagSelectTrigger,
 } from "@/components/tag-picker-dialog";
 import { TagDetailPage, TagsPage } from "@/components/tags-page";
+import { ImportanceMenu } from "@/components/importance-menu";
 import { type TaskChanges } from "@/components/task-form-dialog";
 import { TaskList } from "@/components/task-list";
 import { WhatsNewDialog } from "@/components/whats-new-dialog";
@@ -99,6 +100,7 @@ import {
   type DueSort,
   formatDueDate,
   hasAnyTag,
+  type Importance,
   isActiveTask,
   removeTagFromTasks,
   reorderTasks,
@@ -198,6 +200,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
   const draft = useDuePhrase();
   const [draftTagIds, setDraftTagIds] = useState<string[]>([]);
   const [draftSubtasks, setDraftSubtasks] = useState<Subtask[]>([]);
+  const [draftImportance, setDraftImportance] = useState<Importance>(0);
   const [draftDescription, setDraftDescription] = useState("");
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -334,10 +337,11 @@ function AppContent({ store }: { store: LocalDataStore }) {
     tagIds,
     description,
     subtasks,
+    importance,
   }: TaskChanges) => {
     setTasks((currentTasks) => [
       ...currentTasks,
-      createTask(taskTitle, dueAt, tagIds, description, subtasks),
+      createTask(taskTitle, dueAt, tagIds, description, subtasks, importance),
     ]);
     setStatusMessage(`Added ${taskTitle}.`);
   };
@@ -357,11 +361,13 @@ function AppContent({ store }: { store: LocalDataStore }) {
       tagIds: draftTagIds,
       description: draftDescription,
       subtasks: draftSubtasks,
+      importance: draftImportance,
     });
     draft.reset();
     setDraftTagIds([]);
     setDraftSubtasks([]);
     setDraftDescription("");
+    setDraftImportance(0);
     setError("");
     titleInputRef.current?.focus();
   };
@@ -783,6 +789,10 @@ function AppContent({ store }: { store: LocalDataStore }) {
                           </span>
                         </Button>
                       }
+                    />
+                    <ImportanceMenu
+                      value={draftImportance}
+                      onValueChange={setDraftImportance}
                     />
                     <TagPickerDialog
                       tags={presentTags}

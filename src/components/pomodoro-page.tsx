@@ -992,6 +992,7 @@ function PomodoroPage({
             <Checkbox
               className="-ml-2 -mt-2 pointer-coarse:-ml-2.5 pointer-coarse:-mt-2.5"
               checked={false}
+              importance={selectedTask.importance}
               onCheckedChange={completeCurrentTask}
               aria-label={`Mark ${selectedTask.title} as complete`}
               title="Complete task"

@@ -3,6 +3,7 @@ import { CalendarClock, CalendarPlus, Plus } from "lucide-react";
 
 import { DueDatePickerDialog } from "@/components/due-date-picker-dialog";
 import { DuePhraseInput } from "@/components/due-phrase-input";
+import { ImportanceField } from "@/components/importance-menu";
 import { DescriptionEditor } from "@/components/markdown-description";
 import {
   Field,
@@ -33,6 +34,7 @@ import {
 import {
   createSubtask,
   formatDueDate,
+  type Importance,
   type Subtask,
   type Task,
 } from "@/lib/tasks";
@@ -47,6 +49,7 @@ export interface TaskChanges {
   tagIds: string[];
   description: string;
   subtasks: Subtask[];
+  importance: Importance;
 }
 
 interface TaskFormDialogProps {
@@ -81,6 +84,7 @@ function TaskFormDialog({
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [importance, setImportance] = useState<Importance>(0);
   const [invalidSubtaskId, setInvalidSubtaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const dialogTitleRef = useRef<HTMLHeadingElement>(null);
@@ -95,6 +99,7 @@ function TaskFormDialog({
   });
   const fieldId = useId();
   const dueFieldId = `${fieldId}-due`;
+  const importanceLabelId = `${fieldId}-importance`;
   const errorId = `${fieldId}-error`;
 
   const editing = task !== undefined;
@@ -107,6 +112,7 @@ function TaskFormDialog({
       setTagIds(task?.tagIds ?? []);
       setDescription(task?.description ?? "");
       setSubtasks(task?.subtasks ?? []);
+      setImportance(task?.importance ?? 0);
       setInvalidSubtaskId(null);
       setError("");
     }
@@ -148,6 +154,7 @@ function TaskFormDialog({
         ...subtask,
         title: subtask.title.trim(),
       })),
+      importance,
     });
     setOpen(false);
   };
@@ -257,6 +264,14 @@ function TaskFormDialog({
                         </span>
                       </Button>
                     }
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel id={importanceLabelId}>Importance</FieldLabel>
+                  <ImportanceField
+                    value={importance}
+                    onValueChange={setImportance}
+                    aria-labelledby={importanceLabelId}
                   />
                 </Field>
                 <TagPickerDialog

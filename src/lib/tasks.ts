@@ -39,6 +39,33 @@ export interface Task extends SyncMeta {
   tagIds: string[];
   /** Focus time attributed to this task by completed or partial Pomodoros. */
   focusedMs: number;
+  /** How much the task matters, from 0 (unmarked) to 3 (high). */
+  importance: Importance;
+}
+
+/**
+ * Three marked levels over an unmarked default, as Todoist has them: most tasks
+ * are never marked, so "none" is the common case rather than a fourth rank a
+ * reader has to choose. A number, so a sort can compare it directly.
+ */
+export type Importance = 0 | 1 | 2 | 3;
+
+export const IMPORTANCE_LEVELS: readonly Importance[] = [3, 2, 1, 0];
+
+export const IMPORTANCE_LABELS: Record<Importance, string> = {
+  0: "None",
+  1: "Low",
+  2: "Medium",
+  3: "High",
+};
+
+/** How a level reads after the task's name, for a screen reader. */
+export function importanceDescription(importance: Importance): string {
+  return importance === 0 ? "" : `${IMPORTANCE_LABELS[importance]} importance`;
+}
+
+export function isImportance(value: unknown): value is Importance {
+  return value === 0 || value === 1 || value === 2 || value === 3;
 }
 
 /** Applies a change to a task and stamps it for the next merge. */
@@ -155,6 +182,7 @@ export function toTask(value: unknown): Task | null {
     focusedMs: isNonnegativeInteger(candidate.focusedMs)
       ? candidate.focusedMs
       : 0,
+    importance: isImportance(candidate.importance) ? candidate.importance : 0,
   };
 }
 
@@ -192,6 +220,7 @@ export function createTask(
   tagIds: string[] = [],
   description = "",
   subtasks: Subtask[] = [],
+  importance: Importance = 0,
 ): Task {
   return {
     id: crypto.randomUUID(),
@@ -203,6 +232,7 @@ export function createTask(
     completedAt: null,
     tagIds,
     focusedMs: 0,
+    importance,
     updatedAt: nowIso(),
     deletedAt: null,
   };
@@ -473,10 +503,12 @@ export function loadDueSort(): DueSort {
 }
 
 /**
- * Open tasks by deadline. A task with no due date has no place on a timeline, so
- * it sits below the dated ones whichever way they run rather than piling up at
- * whichever end happens to mean "empty"; tasks sharing a deadline, and the
- * undated block itself, keep the order they were added in.
+ * Open tasks by deadline, then by importance. A task with no due date has no
+ * place on a timeline, so it sits below the dated ones whichever way they run
+ * rather than piling up at whichever end happens to mean "empty". Within one
+ * deadline -- the undated block included -- the more important task comes
+ * first whichever way the dates run, since importance has no "latest first";
+ * tasks that tie on both keep the order they were added in.
  */
 export function sortTasksByDue(tasks: Task[], sort: DueSort): Task[] {
   if (sort === "default") return tasks;
@@ -484,27 +516,33 @@ export function sortTasksByDue(tasks: Task[], sort: DueSort): Task[] {
   const direction = sort === "asc" ? 1 : -1;
 
   return [...tasks].sort((a, b) => {
-    const left = a.dueAt ? dueAtToDeadline(a.dueAt) : null;
-    const right = b.dueAt ? dueAtToDeadline(b.dueAt) : null;
+    const left = dueKey(a);
+    const right = dueKey(b);
 
-    if (left === null || right === null) {
-      return left === right ? 0 : left === null ? 1 : -1;
+    if (left !== right) {
+      if (left === null || right === null) return left === null ? 1 : -1;
+      return (left - right) * direction;
     }
 
-    return (left - right) * direction;
+    return b.importance - a.importance;
   });
 }
 
-/** What two tasks are compared on under a due-date sort; null for undated. */
+/** What two tasks are compared on first under a due-date sort; null for undated. */
 function dueKey(task: Task): number | null {
   return task.dueAt ? dueAtToDeadline(task.dueAt) : null;
+}
+
+/** Whether a due-date sort leaves two tasks in the order they are stored. */
+function sortsTogether(a: Task, b: Task): boolean {
+  return dueKey(a) === dueKey(b) && a.importance === b.importance;
 }
 
 /**
  * The positions the task shown at `index` may be moved to. In manual order that
  * is the whole list. Under a due-date sort it is only the run of tasks that tie
- * with it: moving a task past a different deadline would put the list out of
- * the order it claims to be in, so the sort would just put it back.
+ * with it on deadline and importance: moving a task past either would put the
+ * list out of the order it claims to be in, so the sort would just put it back.
  */
 export function reorderBounds(
   tasks: Task[],
@@ -513,11 +551,11 @@ export function reorderBounds(
 ): { min: number; max: number } {
   if (sort === "default") return { min: 0, max: tasks.length - 1 };
 
-  const key = dueKey(tasks[index]);
+  const task = tasks[index];
   let min = index;
-  while (min > 0 && dueKey(tasks[min - 1]) === key) min -= 1;
+  while (min > 0 && sortsTogether(tasks[min - 1], task)) min -= 1;
   let max = index;
-  while (max < tasks.length - 1 && dueKey(tasks[max + 1]) === key) max += 1;
+  while (max < tasks.length - 1 && sortsTogether(tasks[max + 1], task)) max += 1;
 
   return { min, max };
 }

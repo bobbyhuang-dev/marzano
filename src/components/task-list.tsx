@@ -28,6 +28,7 @@ import { listRowMotion } from "@/lib/motion";
 import {
   canReorderTask,
   hasTaskDetails,
+  importanceDescription,
   reorderBounds,
   type DueSort,
   type Task,
@@ -122,6 +123,7 @@ function TaskItem({
       <Checkbox
         className="-ml-2 -mt-2 pointer-coarse:-ml-2.5 pointer-coarse:-mt-2.5"
         checked={false}
+        importance={task.importance}
         onCheckedChange={onComplete}
         aria-label={`Mark ${task.title} as complete`}
         title="Complete task"
@@ -129,6 +131,10 @@ function TaskItem({
       <div className="min-w-0 flex-1">
         <p className="break-words text-sm font-medium leading-5 text-foreground">
           {task.title}
+          {/* The circle's colour says this to the eye; this says it aloud. */}
+          {task.importance > 0 ? (
+            <span className="sr-only">, {importanceDescription(task.importance)}</span>
+          ) : null}
         </p>
         {hasMeta ? (
           <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">

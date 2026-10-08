@@ -38,15 +38,15 @@ const SORT_OPTIONS: SortOption[] = [
   {
     id: "asc",
     label: "Earliest first",
-    description: "Soonest deadline at the top",
-    announcement: "Sorted by due date, soonest first.",
+    description: "Soonest deadline, then most important",
+    announcement: "Sorted by due date, soonest first, then by importance.",
     icon: ArrowUpNarrowWide,
   },
   {
     id: "desc",
     label: "Latest first",
-    description: "Furthest deadline at the top",
-    announcement: "Sorted by due date, furthest first.",
+    description: "Furthest deadline, then most important",
+    announcement: "Sorted by due date, furthest first, then by importance.",
     icon: ArrowDownWideNarrow,
   },
 ];

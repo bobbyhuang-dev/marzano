@@ -14,6 +14,8 @@ export interface SegmentedOption<T extends string> {
   id: T;
   label: string;
   icon?: LucideIcon;
+  /** Colours the icon, for options told apart by colour as well as name. */
+  iconClassName?: string;
 }
 
 export interface SegmentedControlProps<T extends string> {
@@ -177,7 +179,12 @@ function SegmentedControl<T extends string>({
             )}
           >
             <span className="relative flex items-center gap-2">
-              {Icon ? <Icon aria-hidden="true" className="size-4 shrink-0" /> : null}
+              {Icon ? (
+                <Icon
+                  aria-hidden="true"
+                  className={cn("size-4 shrink-0", option.iconClassName)}
+                />
+              ) : null}
               <span className={cn(iconOnly && Icon && "sr-only")}>{option.label}</span>
             </span>
           </button>
