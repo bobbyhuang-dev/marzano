@@ -453,25 +453,22 @@ export type DueSort = "default" | "asc" | "desc";
 
 export const DUE_SORT_STORAGE_KEY = "marzano.due-sort.v1";
 
-function isDueSort(value: unknown): value is DueSort {
+export function isDueSort(value: unknown): value is DueSort {
   return value === "default" || value === "asc" || value === "desc";
 }
 
-/** The sort outlives a reload: unlike a filter, it is a standing preference. */
+/**
+ * The sort outlives a reload: unlike a filter, it is a standing preference, so
+ * it travels in the data file with the tasks it orders (`preferences.dueSort`
+ * in `lib/backup.ts`). This reads the value the app kept in localStorage before
+ * that, and only the first folder transfer uses it.
+ */
 export function loadDueSort(): DueSort {
   try {
     const stored = window.localStorage.getItem(DUE_SORT_STORAGE_KEY);
     return isDueSort(stored) ? stored : "default";
   } catch {
     return "default";
-  }
-}
-
-export function saveDueSort(sort: DueSort) {
-  try {
-    window.localStorage.setItem(DUE_SORT_STORAGE_KEY, sort);
-  } catch {
-    // The app still works for the current session when storage is unavailable.
   }
 }
 

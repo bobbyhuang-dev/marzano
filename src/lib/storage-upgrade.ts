@@ -1,5 +1,5 @@
 import { type DataContents } from "@/lib/data-file";
-import { loadTasks, TASKS_STORAGE_KEY } from "@/lib/tasks";
+import { loadDueSort, loadTasks, TASKS_STORAGE_KEY } from "@/lib/tasks";
 import { loadTags, TAGS_STORAGE_KEY } from "@/lib/tags";
 import { loadPomodoroHistory, loadPomodoroSettings, POMODORO_HISTORY_STORAGE_KEY, POMODORO_SETTINGS_STORAGE_KEY } from "@/lib/pomodoro";
 
@@ -17,6 +17,7 @@ export function readLegacySnapshot(): LegacySnapshot {
   const contents = {
     tasks: loadTasks(), tags: loadTags(),
     pomodoro: { settings: loadPomodoroSettings(), history: loadPomodoroHistory() },
+    preferences: { dueSort: loadDueSort() },
   };
   try {
     const raw = LEGACY_DATA_KEYS.map((key) => window.localStorage.getItem(key));

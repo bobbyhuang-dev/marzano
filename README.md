@@ -39,7 +39,7 @@ Marzano is a focused task list with due reminders, tags, a calendar, and a built
 
 **Completed archive** — Checked-off tasks stay under Completed for 30 days, where they can be restored or deleted, and are then removed automatically. Tasks close to the cutoff are called out.
 
-**Local data** — Choose a folder in desktop Chrome or Edge. Tasks, tags and Pomodoro settings/history autosave to `marzano.json` while the app is open, with a visible save status and up to 24 hourly recovery copies in `marzano-recovery/`. Existing browser data carries over when choosing a new folder. Opening an existing folder previews its data before use or merge; old version 1 and 2 backup files can be opened through Local data too.
+**Local data** — Choose a folder in desktop Chrome or Edge. Tasks, tags, the task sort and Pomodoro settings/history autosave to `marzano.json` while the app is open, with a visible save status and up to 24 hourly recovery copies in `marzano-recovery/`. Existing browser data carries over when choosing a new folder. Opening an existing folder previews its data before use or merge; old version 1 and 2 backup files can be opened through Local data too.
 
 Descriptions and subtasks travel with their parent task and merge as one record; simultaneous edits to different subtasks are not combined. A merge keeps the current manual order and timer settings. Other browsers support opening a data file and saving a copy, but cannot autosave to an ordinary folder.
 
@@ -80,7 +80,7 @@ Deployments never touch user data. When moving between hostnames with folder sto
 
 ## Your data
 
-Tasks, tags, and Pomodoro settings/history save automatically in browser storage, including Firefox. Where the browser supports folder access (Chrome or Edge on a computer), you can select a folder as the primary storage location. `marzano.json` is a versioned, readable JSON file. Folder writes are serialized, checked against the last file read, committed by closing a writable stream, and read back before reporting success. An external file change pauses saving for review; a missing or invalid live file is never silently overwritten. Use one browser at a time for the same folder; this is local storage, not cross-device sync. A second editing tab in the same browser is blocked to protect pending changes.
+Tasks, tags, the task sort and Pomodoro settings/history save automatically in browser storage, including Firefox. Where the browser supports folder access (Chrome or Edge on a computer), you can select a folder as the primary storage location. `marzano.json` is a versioned, readable JSON file. Folder writes are serialized, checked against the last file read, committed by closing a writable stream, and read back before reporting success. An external file change pauses saving for review; a missing or invalid live file is never silently overwritten. Use one browser at a time for the same folder; this is local storage, not cross-device sync. A second editing tab in the same browser is blocked to protect pending changes.
 
 **Saved files survive clearing cookies and site data.** Browser cleanup can remove the remembered folder permission and recovery cache. Choose the same folder again, review its contents, and select **Use this file**. Wait for **Saved to folder** before cleanup: edits that have only reached browser storage are not protected. Choose a folder outside iCloud/Dropbox if you want the files to remain exclusively on your laptop.
 

@@ -7,7 +7,16 @@ import {
 } from "@/lib/pomodoro";
 import { isPresent, mergeById } from "@/lib/sync";
 import { toTag, type Tag } from "@/lib/tags";
-import { isActiveTask, toTask, type Task } from "@/lib/tasks";
+import { isActiveTask, isDueSort, toTask, type DueSort, type Task } from "@/lib/tasks";
+
+/**
+ * How the list is read, kept with the list: the sort is a decision about the
+ * tasks, so it follows them to another browser, unlike the theme or the
+ * display size, which are about the screen in front of the reader.
+ */
+export interface Preferences {
+  dueSort: DueSort;
+}
 
 /**
  * Everything the app persists that is the user's own, in one file. The theme,
@@ -25,10 +34,19 @@ export interface Backup {
     settings: PomodoroSettings;
     history: PomodoroSessionRecord[];
   };
+  preferences: Preferences;
 }
 
 /** The user's data as it lives in `App.tsx`, without the file envelope. */
-export type BackupContents = Pick<Backup, "tasks" | "tags" | "pomodoro">;
+export type BackupContents = Pick<Backup, "tasks" | "tags" | "pomodoro" | "preferences">;
+
+export const DEFAULT_PREFERENCES: Preferences = { dueSort: "default" };
+
+/** A preference is a plain value, so an unreadable one falls back rather than dropping the file. */
+export function toPreferences(value: unknown): Preferences {
+  const source = isObject(value) ? value : {};
+  return { dueSort: isDueSort(source.dueSort) ? source.dueSort : DEFAULT_PREFERENCES.dueSort };
+}
 
 export const BACKUP_FORMAT = "marzano.backup";
 // Older readers must reject this version rather than silently discard task details.
@@ -87,6 +105,7 @@ export function parseBackup(text: string): BackupContents {
       settings: toPomodoroSettings(pomodoro.settings),
       history: toPomodoroHistory(pomodoro.history),
     },
+    preferences: toPreferences(parsed.preferences),
   };
 }
 
@@ -117,9 +136,9 @@ export function summarizeBackup(contents: BackupContents): BackupSummary {
  * browsers that have both been used since the backup was taken end up with the
  * newer copy of each task rather than one side winning wholesale.
  *
- * Pomodoro settings are the exception. They are a preference rather than a
- * record, so a merge leaves the ones in front of the user alone; only a replace
- * adopts the file's.
+ * Pomodoro settings and the preferences are the exception. They are a setting
+ * rather than a record, so a merge leaves the ones in front of the user alone;
+ * only a replace adopts the file's.
  */
 export function applyImport(
   mode: ImportMode,
@@ -140,5 +159,6 @@ export function applyImport(
         ...incoming.pomodoro.history,
       ]).slice(0, POMODORO_HISTORY_LIMIT),
     },
+    preferences: current.preferences,
   };
 }

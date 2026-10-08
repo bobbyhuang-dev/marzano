@@ -4,7 +4,7 @@ import { DATA_FILE_NAME, dataKey, parseData, readDataFile, serializeData, type D
 import { loadPomodoroHistory, loadPomodoroSettings } from "@/lib/pomodoro";
 import { loadTags } from "@/lib/tags";
 import { readLegacySnapshot, type LegacySnapshot } from "@/lib/storage-upgrade";
-import { loadTasks } from "@/lib/tasks";
+import { loadDueSort, loadTasks } from "@/lib/tasks";
 
 type Phase = "browser" | "saved" | "saving" | "access" | "error" | "conflict";
 export interface DataStatus {
@@ -423,7 +423,11 @@ export class LocalDataStore {
 }
 
 export function legacyContents(): DataContents {
-  return { tasks: loadTasks(), tags: loadTags(), pomodoro: { settings: loadPomodoroSettings(), history: loadPomodoroHistory() } };
+  return {
+    tasks: loadTasks(), tags: loadTags(),
+    pomodoro: { settings: loadPomodoroSettings(), history: loadPomodoroHistory() },
+    preferences: { dueSort: loadDueSort() },
+  };
 }
 
 let boot: Promise<LocalDataStore> | undefined;

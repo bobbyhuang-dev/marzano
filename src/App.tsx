@@ -100,10 +100,8 @@ import {
   formatDueDate,
   hasAnyTag,
   isActiveTask,
-  loadDueSort,
   removeTagFromTasks,
   reorderTasks,
-  saveDueSort,
   setSubtaskCompleted,
   sortTasksByDue,
   type Subtask,
@@ -181,7 +179,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
   /** The tag whose own page is open, or null while the tag list is showing. */
   const [openTagId, setOpenTagId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
-  const [dueSort, setDueSort] = useState<DueSort>(loadDueSort);
+  const [dueSort, setDueSort] = useState<DueSort>(() => store.contents.preferences.dueSort);
   const [calendarScope, setCalendarScope] =
     useState<CalendarScope>(loadCalendarScope);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -238,8 +236,8 @@ function AppContent({ store }: { store: LocalDataStore }) {
   useCompletedCleanup(setTasks);
 
   useEffect(() => {
-    store.update({ tasks, tags, pomodoro: { settings: pomodoro.settings, history: pomodoro.history } });
-  }, [store, tasks, tags, pomodoro.settings, pomodoro.history]);
+    store.update({ tasks, tags, pomodoro: { settings: pomodoro.settings, history: pomodoro.history }, preferences: { dueSort } });
+  }, [store, tasks, tags, pomodoro.settings, pomodoro.history, dueSort]);
 
   useEffect(() => {
     const check = () => { if (!document.hidden) void store.checkForChanges(); };
@@ -260,10 +258,6 @@ function AppContent({ store }: { store: LocalDataStore }) {
       window.removeEventListener("beforeunload", beforeUnload);
     };
   }, [store]);
-
-  useEffect(() => {
-    saveDueSort(dueSort);
-  }, [dueSort]);
 
   useEffect(() => {
     saveCalendarScope(calendarScope);
@@ -505,6 +499,7 @@ function AppContent({ store }: { store: LocalDataStore }) {
     setTasks(incoming.tasks);
     setTags(incoming.tags);
     pomodoro.restoreState(incoming.pomodoro.settings, incoming.pomodoro.history);
+    setDueSort(incoming.preferences.dueSort);
     const surviving = new Set(incoming.tags.filter(isPresent).map((tag) => tag.id));
     setTagFilter((current) => current.filter((id) => surviving.has(id)));
     setDraftTagIds((current) => current.filter((id) => surviving.has(id)));

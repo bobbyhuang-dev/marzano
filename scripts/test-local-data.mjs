@@ -23,7 +23,8 @@ const { LocalDataStore } = await import("../src/lib/local-data.ts");
 const { serializeData, parseData, dataKey } = await import("../src/lib/data-file.ts");
 const { createTask, touchTask, createSubtask } = await import("../src/lib/tasks.ts");
 const { DEFAULT_POMODORO_SETTINGS } = await import("../src/lib/pomodoro.ts");
-const empty = () => ({ tasks: [], tags: [], pomodoro: { settings: { ...DEFAULT_POMODORO_SETTINGS }, history: [] } });
+const { applyImport } = await import("../src/lib/backup.ts");
+const empty = () => ({ tasks: [], tags: [], pomodoro: { settings: { ...DEFAULT_POMODORO_SETTINGS }, history: [] }, preferences: { dueSort: "default" } });
 const data = (title = "Remember this") => ({ ...empty(), tasks: [createTask(title, null, [], "Notes", [createSubtask("First step")])] });
 const missing = () => new DOMException("Missing", "NotFoundError");
 
@@ -216,15 +217,33 @@ test("format roundtrip preserves subtasks, notes, manual order and tombstones", 
 test("rejects lossy, duplicate and unknown-schema input before it can replace data", () => {
   const source = JSON.parse(serializeData(data()));
   for (const modified of [
-    { ...source, version: 2 }, { ...source, tasks: null },
+    { ...source, version: 3 }, { ...source, tasks: null },
+    { ...source, preferences: undefined }, { ...source, preferences: { dueSort: "sideways" } },
+    { ...source, preferences: { dueSort: "asc", futureField: "must not be lost" } },
     { ...source, tasks: [...source.tasks, source.tasks[0]] },
     { ...source, tasks: [{ ...source.tasks[0], subtasks: [{ id: "broken" }] }] },
     { ...source, tasks: [{ ...source.tasks[0], futureField: "must not be lost" }] },
   ]) assert.throws(() => parseData(JSON.stringify(modified)));
 });
 
+test("the task sort is saved in the file, opens with it, and only a replace adopts a file's", () => {
+  const source = { ...data(), preferences: { dueSort: "asc" } };
+  const text = serializeData(source);
+  assert.equal(JSON.parse(text).version, 2);
+  assert.equal(parseData(text).preferences.dueSort, "asc");
+  assert.equal(applyImport("merge", empty(), source).preferences.dueSort, "default");
+  assert.equal(applyImport("replace", empty(), source).preferences.dueSort, "asc");
+});
+
+test("version 1 live files open with the default sort", () => {
+  const source = JSON.parse(serializeData(data())); source.version = 1; delete source.preferences;
+  assert.equal(parseData(JSON.stringify(source)).preferences.dueSort, "default");
+  source.preferences = { dueSort: "desc" };
+  assert.equal(parseData(JSON.stringify(source)).preferences.dueSort, "desc");
+});
+
 test("version 1 and 2 backups remain readable", () => {
-  const source = JSON.parse(serializeData(data())); source.format = "marzano.backup"; source.version = 2;
+  const source = JSON.parse(serializeData(data())); source.format = "marzano.backup"; source.version = 2; delete source.preferences;
   assert.equal(parseData(JSON.stringify(source)).tasks.length, 1);
   source.version = 1; delete source.tasks[0].description; delete source.tasks[0].subtasks;
   assert.deepEqual(parseData(JSON.stringify(source)).tasks[0].subtasks, []);

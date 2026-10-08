@@ -1,9 +1,11 @@
-import { parseBackup, type BackupContents } from "@/lib/backup";
+import { DEFAULT_PREFERENCES, parseBackup, type BackupContents } from "@/lib/backup";
 
 export type DataContents = BackupContents;
 export const DATA_FILE_NAME = "marzano.json";
 const FORMAT = "marzano.data";
-const VERSION = 1;
+// Version 2 added `preferences` (the task sort). Older readers must reject it
+// rather than drop the field on their next save.
+const VERSION = 2;
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export function serializeData(contents: DataContents): string {
@@ -37,8 +39,11 @@ export function parseData(text: string): DataContents {
   if (!Number.isInteger(value.version) || value.version < 1 || value.version > maxVersion) {
     throw new Error("This file uses an unsupported version. Update Marzano before opening it.");
   }
+  // Backups and version 1 live files predate the preferences; every later file carries them.
+  const hasPreferences = value.format === FORMAT && value.version >= 2;
   if (!Array.isArray(value.tasks) || !Array.isArray(value.tags) || !value.pomodoro ||
-      !Array.isArray(value.pomodoro.history) || !value.pomodoro.settings) {
+      !Array.isArray(value.pomodoro.history) || !value.pomodoro.settings ||
+      (hasPreferences && (!value.preferences || typeof value.preferences !== "object"))) {
     throw new Error("This file is missing required data. It has been left untouched.");
   }
   const result = parseBackup(JSON.stringify({ ...value, format: "marzano.backup", version: 2 }));
@@ -47,8 +52,12 @@ export function parseData(text: string): DataContents {
       throw new Error("This file contains duplicate records. It has been left untouched.");
     }
   }
-  // Version 1 backups predate descriptions/subtasks. Only those omissions are migrated.
-  const source = { tasks: value.tasks, tags: value.tags, pomodoro: value.pomodoro };
+  // Version 1 backups predate descriptions/subtasks, and files before the
+  // preferences get the defaults. Only those omissions are migrated.
+  const source = {
+    tasks: value.tasks, tags: value.tags, pomodoro: value.pomodoro,
+    preferences: hasPreferences || value.preferences !== undefined ? value.preferences : DEFAULT_PREFERENCES,
+  };
   if (value.format === "marzano.backup" && value.version === 1) {
     source.tasks = source.tasks.map((task: object) => ({ description: "", subtasks: [], ...task }));
   }
